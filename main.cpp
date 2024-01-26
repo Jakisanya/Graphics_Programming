@@ -53,22 +53,37 @@ void initializeGLEW() {
 
 class Renderer {
 public:
-    // Vertex data for the prism
+    // Vertex data for the prism 1
     std::vector<GLfloat> prismVertexData = {
-            // Face 2 (front)
+            // Prism 1
+            // Face (front)
             -0.25f, -0.25f, 0.75f, 1.0f, 0.0f, 0.0f,  // Bottom-left-red
             0.25f, -0.25f, 0.75f, 0.0f, 1.0f, 0.0f,   // Bottom-right-green
             0.25f, 0.25f, 0.75f, 0.0f, 0.0f, 1.0f,    // Top-right-blue
             -0.25f, 0.25f, 0.75f, 1.0f, 1.0f, 0.0f,   // Top-left-yellow
 
-            // Face 4 (back)
+            // Face (back)
             -0.25f, -0.25f, -0.75f, 1.0f, 0.0f, 0.0f,  // Bottom-left-red
             0.25f, -0.25f, -0.75f, 0.0f, 1.0f, 0.0f,   // Bottom-right-green
             0.25f, 0.25f, -0.75f, 0.0f, 0.0f, 1.0f,    // Top-right-blue
-            -0.25, 0.25f, -0.75f, 1.0f, 1.0f, 0.0f     // Top-left-yellow
+            -0.25f, 0.25f, -0.75f, 1.0f, 1.0f, 0.0f,     // Top-left-yellow
+
+            // Prism 2
+            // Face (front)
+            -0.25f, 0.75f, 0.75f, 1.0f, 0.0f, 0.0f,  // Bottom-left-red
+            0.25f, 0.75f, 0.75f, 0.0f, 1.0f, 0.0f,   // Bottom-right-green
+            0.25f, 1.25f, 0.75f, 0.0f, 0.0f, 1.0f,    // Top-right-blue
+            -0.25f, 1.25f, 0.75f, 1.0f, 1.0f, 0.0f,   // Top-left-yellow
+
+            // Face (back)
+            -0.25f, 0.75f, -0.75f, 1.0f, 0.0f, 0.0f,  // Bottom-left-red
+            0.25f, 0.75f, -0.75f, 0.0f, 1.0f, 0.0f,   // Bottom-right-green
+            0.25f, 1.25f, -0.75f, 0.0f, 0.0f, 1.0f,    // Top-right-blue
+            -0.25, 1.25f, -0.75f, 1.0f, 1.0f, 0.0f     // Top-left-yellow
     };
 
     std::vector<GLuint> indices = {
+            // prism1 indices
             0, 1, 2, // front
             2, 3, 0, // front
             4, 5, 6, // back
@@ -80,7 +95,20 @@ public:
             3, 2, 6, // top
             6, 7, 3, // top
             0, 1, 5, // bottom
-            5, 4, 0  // bottom
+            5, 4, 0,  // bottom
+            // prism2 indices
+            8, 9, 10,
+            10, 11, 8,
+            12, 13, 14,
+            14, 15, 12,
+            12, 8, 10,
+            10, 15, 12,
+            9, 13, 14,
+            14, 10, 9,
+            11, 10, 14,
+            14, 15, 11,
+            8, 9, 13,
+            13, 12, 8
     };
 
     GLuint shaderProgram;
@@ -139,33 +167,39 @@ public:
         )";
     }
 
-    Renderer() : shaderProgram(0),VAO(0), VBO(0), EBO(0), vertexShaderSource(nullptr),
-                 fragmentShaderSource(nullptr) {
-        // Vertex Array Object (VAO), Vertex Buffer Object (VBO), EBO
-        glGenVertexArrays(1, &VAO);
+    Renderer() : shaderProgram(0),VAO_prism1(0), VAO_prism2(0), VBO(0), EBO(0),
+                 vertexShaderSource(nullptr), fragmentShaderSource(nullptr) {
+        // Vertex Array Objects (VAO), Vertex Buffer Object (VBO), EBO
+        glGenVertexArrays(1, &VAO_prism1);
+        glGenVertexArrays(1, &VAO_prism2);
         glGenBuffers(1, &VBO);
         glGenBuffers(1, &EBO);
 
-        // Bind VAO
-        glBindVertexArray(VAO);
-
-        // Bind VBO and add data to it
+        // Bind VBO_prism1 and add data to it
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
-        glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(prismVertexData.size() * sizeof(GLfloat)), prismVertexData.data(), GL_STATIC_DRAW);
+
+        // Bind VAO_prism1 and set the vertex attribute pointers
+        glBindVertexArray(VAO_prism1);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+        glEnableVertexAttribArray(0);
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)nullptr);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
+
+
+        // Bind VAO_prism2 and set the vertex attribute pointers
+        glBindVertexArray(VAO_prism2);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+        glEnableVertexAttribArray(0);
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)nullptr);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
 
         // Bind EBO and add data to it
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(indices.size() * sizeof(GLuint)), indices.data(), GL_STATIC_DRAW);
-
-        // Specify vertex attribute pointers
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)nullptr);
-        glEnableVertexAttribArray(0);
-
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
-        glEnableVertexAttribArray(1);
-
-        // Unbind VAO and VBO
-        glBindVertexArray(0);
+        glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(prismVertexData.size() * sizeof(GLfloat)),
+                     prismVertexData.data(), GL_STATIC_DRAW);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(indices.size() * sizeof(GLuint)), indices.data(),
+                     GL_STATIC_DRAW);
 
         // Enable depth testing
         glEnable(GL_DEPTH_TEST);
@@ -271,7 +305,7 @@ public:
         glUseProgram(shaderProgram);
 
         // Define camera parameters
-        glm::vec3 cameraPosition = glm::vec3(2.0f, 2.0f, 2.0f);
+        glm::vec3 cameraPosition = glm::vec3(4.0f, 4.0f, 4.0f);
         glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
         glm::vec3 upVector = glm::vec3(0.0f, 1.0f, 0.0f);
 
@@ -286,7 +320,7 @@ public:
 
         // Set up model matrix and update for rotation
         static float angle = 0.0f;
-        angle += 0.002f;
+        angle += 0.001f;
         glm::mat4 modelMatrix = glm::rotate(glm::mat4(1.0f), angle, glm::vec3(0.0f, 1.0f, 0.0f));
 
         // Set uniforms
@@ -300,9 +334,12 @@ public:
         glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE, glm::value_ptr(modelMatrix));
 
         // Draw the triangle
-        glBindVertexArray(VAO);
-        glDrawElements(GL_TRIANGLES, static_cast<GLint>(indices.size()),
+        glBindVertexArray(VAO_prism1);
+        glDrawElements(GL_TRIANGLES, static_cast<GLint>(indices.size() / 2),
                        GL_UNSIGNED_INT, nullptr);
+        glBindVertexArray(VAO_prism2);
+        glDrawElements(GL_TRIANGLES, static_cast<GLint>(indices.size() / 2),
+                       GL_UNSIGNED_INT, (void*)((indices.size() / 2) * sizeof(GLint)));
 
         iterationCount++;
 
@@ -313,13 +350,14 @@ public:
 
     ~Renderer() {
         // Cleanup
-        glDeleteVertexArrays(1, &VAO);
+        glDeleteVertexArrays(1, &VAO_prism1);
+        glDeleteVertexArrays(1, &VAO_prism2);
         glDeleteBuffers(1, &VBO);
         glDeleteProgram(shaderProgram);
     }
 
 private:
-    GLuint VAO, VBO, EBO;
+    GLuint VAO_prism1, VAO_prism2, VBO, EBO;
     std::vector<GLuint> shaders;
     const char* vertexShaderSource;
     const char* fragmentShaderSource;
