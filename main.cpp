@@ -70,16 +70,16 @@ public:
 
             // Prism 2
             // Face (front)
-            -0.25f, 0.75f, 0.75f, 1.0f, 0.0f, 0.0f,  // Bottom-left-red
-            0.25f, 0.75f, 0.75f, 0.0f, 1.0f, 0.0f,   // Bottom-right-green
-            0.25f, 1.25f, 0.75f, 0.0f, 0.0f, 1.0f,    // Top-right-blue
-            -0.25f, 1.25f, 0.75f, 1.0f, 1.0f, 0.0f,   // Top-left-yellow
+            -0.75f, -0.25f, 0.25f, 1.0f, 0.0f, 0.0f,  // Bottom-left-red
+            0.75f, -0.25f, 0.25f, 0.0f, 1.0f, 0.0f,  // Bottom-right-green
+            0.75f, 0.25f, 0.25f, 0.0f, 0.0f, 1.0f,   // Top-right-blue
+            -0.75f, 0.25f, 0.25f, 1.0f, 1.0f, 0.0f,   // Top-left-yellow
 
             // Face (back)
-            -0.25f, 0.75f, -0.75f, 1.0f, 0.0f, 0.0f,  // Bottom-left-red
-            0.25f, 0.75f, -0.75f, 0.0f, 1.0f, 0.0f,   // Bottom-right-green
-            0.25f, 1.25f, -0.75f, 0.0f, 0.0f, 1.0f,    // Top-right-blue
-            -0.25, 1.25f, -0.75f, 1.0f, 1.0f, 0.0f     // Top-left-yellow
+            -0.75f, -0.25f, -0.25f, 1.0f, 0.0f, 0.0f,  // Bottom-left-red
+            0.75f, -0.25f, -0.25f, 0.0f, 1.0f, 0.0f,   // Bottom-right-green
+            0.75f, 0.25f, -0.25f, 0.0f, 0.0f, 1.0f,    // Top-right-blue
+            -0.75f, 0.25f, -0.25f, 1.0f, 1.0f, 0.0f  // Top-left-yellow
     };
 
     std::vector<GLuint> indices = {
@@ -96,6 +96,7 @@ public:
             6, 7, 3, // top
             0, 1, 5, // bottom
             5, 4, 0,  // bottom
+
             // prism2 indices
             8, 9, 10,
             10, 11, 8,
