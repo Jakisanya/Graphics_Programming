@@ -53,101 +53,70 @@ void initializeGLEW() {
 
 class Renderer {
 public:
-    // Vertex data for the prism 1
-    std::vector<GLfloat> prism1VertexData = {
-            // Prism 1
-            // Face (front)
-            -0.25f, -0.25f, 0.75f, 1.0f, 0.0f, 0.0f,  // Bottom-left-red
-            0.25f, -0.25f, 0.75f, 0.0f, 1.0f, 0.0f,   // Bottom-right-green
-            0.25f, 0.25f, 0.75f, 0.0f, 0.0f, 1.0f,    // Top-right-blue
-            -0.25f, 0.25f, 0.75f, 1.0f, 1.0f, 0.0f,   // Top-left-yellow
+    std::vector<GLuint> VBOs;
+    std::vector<GLuint> VAOs;
+    std::vector<GLuint> EBOs;
+    std::vector<GLuint> vertex_indices;
+    std::vector<glm::mat4> modelMatrices;
+    void createPrism(GLuint &VAO, GLuint &VBO, GLuint &EBO) {
+        // Vertex data for the prism 1
+        std::vector<GLfloat> prismVertexData = {
+                // Prism 1
+                // Face (front)
+                -0.25f, -0.25f, 0.75f, 1.0f, 0.0f, 0.0f,  // Bottom-left-red
+                0.25f, -0.25f, 0.75f, 0.0f, 1.0f, 0.0f,   // Bottom-right-green
+                0.25f, 0.25f, 0.75f, 0.0f, 0.0f, 1.0f,    // Top-right-blue
+                -0.25f, 0.25f, 0.75f, 1.0f, 1.0f, 0.0f,   // Top-left-yellow
 
-            // Face (back)
-            -0.25f, -0.25f, -0.75f, 1.0f, 0.0f, 0.0f,  // Bottom-left-red
-            0.25f, -0.25f, -0.75f, 0.0f, 1.0f, 0.0f,   // Bottom-right-green
-            0.25f, 0.25f, -0.75f, 0.0f, 0.0f, 1.0f,    // Top-right-blue
-            -0.25f, 0.25f, -0.75f, 1.0f, 1.0f, 0.0f    // Top-left-yellow
-    };
+                // Face (back)
+                -0.25f, -0.25f, -0.75f, 1.0f, 0.0f, 0.0f,  // Bottom-left-red
+                0.25f, -0.25f, -0.75f, 0.0f, 1.0f, 0.0f,   // Bottom-right-green
+                0.25f, 0.25f, -0.75f, 0.0f, 0.0f, 1.0f,    // Top-right-blue
+                -0.25f, 0.25f, -0.75f, 1.0f, 1.0f, 0.0f    // Top-left-yellow
+        };
 
-    std::vector<GLfloat> prism2VertexData;
-    std::vector<GLfloat> prism3VertexData;
-    std::vector<GLfloat> prismVertexData;
-    void create_prism_vertex_data() {
-        glm::mat4 p2translationMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(4.0f, 0.0f, 0.0f));
-        glm::mat4 p3translationMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(-4.0f, 0.0f, 0.0f));
+        vertex_indices = {
+                // prism1 indices
+                0, 1, 2, // front
+                2, 3, 0, // front
+                4, 5, 6, // back
+                6, 7, 4, // back
+                4, 0, 2, // left
+                2, 7, 4, // left
+                1, 5, 6, // right
+                6, 2, 1, // right
+                3, 2, 6, // top
+                6, 7, 3, // top
+                0, 1, 5, // bottom
+                5, 4, 0,  // bottom
+        };
 
-        for (std::size_t i = 0; i < prism1VertexData.size(); i += 6) {
-            // Process the three elements
-            glm::vec3 vertex_coordinates = {prism1VertexData[i], prism1VertexData[i + 1], prism1VertexData[i + 2]};
-            glm::vec3 colour = {prism1VertexData[i + 3], prism1VertexData[i + 4], prism1VertexData[i + 5]};
+        glGenVertexArrays(1, &VAO);
+        glGenBuffers(1, &VBO);
+        glGenBuffers(1, &EBO);
 
-            // Calculate new vertices using translation matrices
-            glm::vec3 new_vertex_p2 = glm::vec3((p2translationMatrix * glm::vec4(vertex_coordinates, 1.0f)));
-            glm::vec3 new_vertex_p3 = glm::vec3((p3translationMatrix * glm::vec4(vertex_coordinates, 1.0f)));
+        glBindVertexArray(VAO);
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
 
-            // Append values to the respective vectors
-            prism2VertexData.insert(prism2VertexData.end(), {new_vertex_p2.x, new_vertex_p2.y, new_vertex_p2.z,
-                                                             colour.r, colour.g, colour.b});
-            prism3VertexData.insert(prism3VertexData.end(), {new_vertex_p3.x, new_vertex_p3.y, new_vertex_p3.z,
-                                                             colour.r, colour.g, colour.b});
-        }
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)nullptr);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
+        glEnableVertexAttribArray(0);
+        glEnableVertexAttribArray(1);
 
-        // Concatenate the three prism vectors into prismVertexData
-        prismVertexData.reserve(prism1VertexData.size() + prism2VertexData.size() + prism3VertexData.size());
-        prismVertexData.insert(prismVertexData.end(), prism1VertexData.begin(), prism1VertexData.end());
-        prismVertexData.insert(prismVertexData.end(), prism2VertexData.begin(), prism2VertexData.end());
-        prismVertexData.insert(prismVertexData.end(), prism3VertexData.begin(), prism3VertexData.end());
+        // Add data to VBO and EBO
+        glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(prismVertexData.size() * sizeof(GLfloat)),
+                     prismVertexData.data(), GL_STATIC_DRAW);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(vertex_indices.size() * sizeof(GLint)),
+                     vertex_indices.data(), GL_STATIC_DRAW);
+
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
     }
-
-    std::vector<GLuint> indices = {
-            // prism1 indices
-            0, 1, 2, // front
-            2, 3, 0, // front
-            4, 5, 6, // back
-            6, 7, 4, // back
-            4, 0, 2, // left
-            2, 7, 4, // left
-            1, 5, 6, // right
-            6, 2, 1, // right
-            3, 2, 6, // top
-            6, 7, 3, // top
-            0, 1, 5, // bottom
-            5, 4, 0,  // bottom
-
-            // prism2 indices (same order as prism1)
-            8, 9, 10,
-            10, 11, 8,
-            12, 13, 14,
-            14, 15, 12,
-            12, 8, 10,
-            10, 15, 12,
-            9, 13, 14,
-            14, 10, 9,
-            11, 10, 14,
-            14, 15, 11,
-            8, 9, 13,
-            13, 12, 8,
-
-            // prism3 indices (same order as prism1)
-            16, 17, 18, // front
-            18, 19, 16, // front
-            20, 21, 22, // back
-            22, 23, 20, // back
-            20, 16, 18, // left
-            18, 23, 20, // left
-            17, 21, 22, // right
-            22, 18, 17, // right
-            19, 18, 22, // top
-            22, 23, 19, // top
-            16, 17, 21, // bottom
-            21, 20, 16  // bottom
-    };
-
 
     GLuint shaderProgram;
     bool resizeFlag = false;
-    GLfloat aspectRatio;
-
     void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
         // Update viewport dimensions on window resize
         glUseProgram(shaderProgram);
@@ -172,20 +141,10 @@ public:
             uniform mat4 modelMatrix;
             uniform mat4 viewMatrix;
             uniform mat4 projectionMatrix;
-            vec2 ComputePositionOffsets(float elapsedTime);
 
             void main() {
                 gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(vertexPosition, 1.0f);
                 vertex_colour = vertexColour;
-            }
-
-            vec2 ComputePositionOffsets(float elapsedTime) {
-                float fLoopDuration = 5.0f;
-                float fScale = (3.0f * (3.14159f * 2.0f)) / fLoopDuration;
-                float fCurrTimeThroughLoop = mod(elapsedTime, fLoopDuration);
-                float fXOffset = cos(fCurrTimeThroughLoop * fScale) * 0.5f;
-                float fYOffset = sin(fCurrTimeThroughLoop * fScale) * 0.5f;
-                return vec2(fXOffset, fYOffset);
             }
         )";
         fragmentShaderSource = R"(
@@ -200,48 +159,8 @@ public:
         )";
     }
 
-    Renderer() : shaderProgram(0),VAO_prism1(0), VAO_prism2(0), VAO_prism3(0),
-                 VBO(0), EBO(0), vertexShaderSource(nullptr), fragmentShaderSource(nullptr) {
-        // Vertex Array Objects (VAO), Vertex Buffer Object (VBO), EBO
-        glGenVertexArrays(1, &VAO_prism1);
-        glGenVertexArrays(1, &VAO_prism2);
-        glGenVertexArrays(1, &VAO_prism3);
-        glGenBuffers(1, &VBO);
-        glGenBuffers(1, &EBO);
-
-        // Bind VBO
-        glBindBuffer(GL_ARRAY_BUFFER, VBO);
-
-        // Bind VAO_prism1 and set the vertex attribute pointers
-        glBindVertexArray(VAO_prism1);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-        glEnableVertexAttribArray(0);
-        glEnableVertexAttribArray(1);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)nullptr);
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
-
-
-        // Bind VAO_prism2 and set the vertex attribute pointers
-        glBindVertexArray(VAO_prism2);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-        glEnableVertexAttribArray(0);
-        glEnableVertexAttribArray(1);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)nullptr);
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
-
-        // Bind VAO_prism2 and set the vertex attribute pointers
-        glBindVertexArray(VAO_prism3);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-        glEnableVertexAttribArray(0);
-        glEnableVertexAttribArray(1);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)nullptr);
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
-
-        // Add data to VBO and EBO
-        glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(prismVertexData.size() * sizeof(GLfloat)),
-                     prismVertexData.data(), GL_STATIC_DRAW);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(indices.size() * sizeof(GLuint)), indices.data(),
-                     GL_STATIC_DRAW);
+    Renderer() : shaderProgram(0), VAOs(3), VBOs(3), EBOs(3), vertex_indices(0),
+                 modelMatrices(3), vertexShaderSource(nullptr), fragmentShaderSource(nullptr) {
 
         // Enable depth testing
         glEnable(GL_DEPTH_TEST);
@@ -339,15 +258,50 @@ public:
         }
     }
 
-    GLint iterationCount{0};
+    void drawPrism(GLuint VAO, GLuint EBO, glm::mat4 view, glm::mat4 model, glm::mat4 projection, const std::vector<GLuint>& ebo_indices) const{
+        glUseProgram(shaderProgram);
+
+        GLint elapsedTimeLocation = glGetUniformLocation(shaderProgram, "fElapsedTime");
+        glUniform1d(elapsedTimeLocation, glfwGetTime());
+
+        GLint viewMatrixLocation = glGetUniformLocation(shaderProgram, "viewMatrix");
+        glUniformMatrix4fv(viewMatrixLocation, 1, GL_FALSE, glm::value_ptr(view));
+
+        GLint modelMatrixLocation = glGetUniformLocation(shaderProgram, "modelMatrix");
+        glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE, glm::value_ptr(model));
+
+        GLint projectionMatrixLocation = glGetUniformLocation(shaderProgram, "projectionMatrix");
+        glUniformMatrix4fv(projectionMatrixLocation, 1, GL_FALSE, glm::value_ptr(projection));
+
+        glBindVertexArray(VAO);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+        glDrawElements(GL_TRIANGLES, static_cast<GLint>(ebo_indices.size()),
+                       GL_UNSIGNED_INT, nullptr);
+
+        glBindVertexArray(0);
+        glUseProgram(0);
+    }
+
+    static std::vector<GLfloat> ComputePositionOffsets(float elapsedTime) {
+        std::vector<GLfloat> Offsets;
+        float fLoopDuration = 5.0f;
+        float fScale = (2.0f * (3.14159f * 3.0f)) / fLoopDuration;
+        float fCurrTimeThroughLoop = glm::mod(elapsedTime, fLoopDuration);
+        float fXOffset = glm::cos(fCurrTimeThroughLoop * fScale) * 2.5f;
+        float fYOffset = glm::sin(fCurrTimeThroughLoop * fScale) * 2.5f;
+        float fZOffset = glm::sin(fCurrTimeThroughLoop * fScale) * 2.5f;
+        Offsets.push_back(fXOffset);
+        Offsets.push_back(fYOffset);
+        Offsets.push_back(fZOffset);
+        return Offsets;
+    }
+
     void perform_render_sequence() {
         // Clear the color and depth buffers
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        glUseProgram(shaderProgram);
-
         // Define camera parameters
-        glm::vec3 cameraPosition = glm::vec3(2.0f, 4.0f, 4.0f);
+        glm::vec3 cameraPosition = glm::vec3(-4.0f, 7.0f, 10.0f);
         glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
         glm::vec3 upVector = glm::vec3(0.0f, 1.0f, 0.0f);
 
@@ -360,49 +314,37 @@ public:
                                                       static_cast<GLfloat>(WINDOW_HEIGHT),
                                                       0.1f, 100.0f);
 
+        // move modelMatrices[1] and modelMatrices[2]
+        std::vector<float> Offsets = ComputePositionOffsets(static_cast<float>(glfwGetTime()));
+        modelMatrices[1] = glm::translate(modelMatrices[0], glm::vec3(Offsets[0], 0.0f, Offsets[2]));
+        modelMatrices[2] = glm::translate(modelMatrices[1], glm::vec3(Offsets[0], 0.0f, Offsets[2]));
+
+        /*
         // Set up model matrix and update for rotation
-        static float angle = 0.0f;
-        angle += 0.001f;
-        glm::mat4 modelMatrix = glm::rotate(glm::mat4(1.0f), angle, glm::vec3(0.0f, 1.0f, 0.0f));
+        float rotationSpeed = 0.1f; // Adjust the speed as needed
+        float angle = rotationSpeed * static_cast<float>(glfwGetTime()); // Using GLFW's time function
+        modelMatrices[0] = glm::rotate(modelMatrices[0], angle, glm::vec3(0.0f, 1.0f, 0.0f));
+        modelMatrices[1] = glm::rotate(modelMatrices[1], angle, glm::vec3(0.0f, 1.0f, 0.0f));
+        modelMatrices[2] = glm::rotate(modelMatrices[2], angle, glm::vec3(0.0f, 1.0f, 0.0f));
+        */
 
-        // Set uniforms
-        GLint elapsedTimeLocation = glGetUniformLocation(shaderProgram, "fElapsedTime");
-        GLint viewMatrixLocation = glGetUniformLocation(shaderProgram, "viewMatrix");
-        GLint projectionMatrixLocation = glGetUniformLocation(shaderProgram, "projectionMatrix");
-        GLint modelMatrixLocation = glGetUniformLocation(shaderProgram, "modelMatrix");
-        glUniform1d(elapsedTimeLocation, glfwGetTime());
-        glUniformMatrix4fv(viewMatrixLocation, 1, GL_FALSE, glm::value_ptr(viewMatrix));
-        glUniformMatrix4fv(projectionMatrixLocation, 1, GL_FALSE, glm::value_ptr(projectionMatrix));
-        glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE, glm::value_ptr(modelMatrix));
-
-        // Draw the triangle
-        glBindVertexArray(VAO_prism1);
-        glDrawElements(GL_TRIANGLES, static_cast<GLint>(indices.size() / 3),
-                       GL_UNSIGNED_INT, nullptr);
-        glBindVertexArray(VAO_prism2);
-        glDrawElements(GL_TRIANGLES, static_cast<GLint>(indices.size() / 3),
-                       GL_UNSIGNED_INT, (void*)((indices.size() / 3) * sizeof(GLint)));
-        glBindVertexArray(VAO_prism3);
-        glDrawElements(GL_TRIANGLES, static_cast<GLint>(indices.size() / 3),
-                       GL_UNSIGNED_INT, (void*)((2 * (indices.size() / 3)) * sizeof(GLint)));
-        iterationCount++;
-
-        // Unbind VAO and shader program
-        glBindVertexArray(0);
-        glUseProgram(0);
+        drawPrism(VAOs[0], EBOs[0], viewMatrix, modelMatrices[0], projectionMatrix, vertex_indices);
+        drawPrism(VAOs[1], EBOs[1], viewMatrix, modelMatrices[1], projectionMatrix, vertex_indices);
+        drawPrism(VAOs[2], EBOs[2], viewMatrix, modelMatrices[2], projectionMatrix, vertex_indices);
     }
 
     ~Renderer() {
         // Cleanup
-        glDeleteVertexArrays(1, &VAO_prism1);
-        glDeleteVertexArrays(1, &VAO_prism2);
-        glDeleteVertexArrays(1, &VAO_prism3);
-        glDeleteBuffers(1, &VBO);
+        glDeleteVertexArrays(1, &VAOs[0]);
+        glDeleteVertexArrays(1, &VAOs[1]);
+        glDeleteVertexArrays(1, &VAOs[2]);
+        glDeleteBuffers(1, &VBOs[0]);
+        glDeleteBuffers(1, &VBOs[1]);
+        glDeleteBuffers(1, &VBOs[2]);
         glDeleteProgram(shaderProgram);
     }
 
 private:
-    GLuint VAO_prism1, VAO_prism2, VAO_prism3, VBO, EBO;
     std::vector<GLuint> shaders;
     const char* vertexShaderSource;
     const char* fragmentShaderSource;
@@ -432,17 +374,18 @@ int main() {
     GLint windowWidthLocation = glGetUniformLocation(renderer.shaderProgram, "windowWidth");
     GLint windowHeightLocation = glGetUniformLocation(renderer.shaderProgram, "windowHeight");
     glUseProgram(renderer.shaderProgram);
-    glUniform1f(windowWidthLocation, WINDOW_WIDTH);
-    glUniform1f(windowHeightLocation, WINDOW_HEIGHT);
+    glUniform1i(windowWidthLocation, WINDOW_WIDTH);
+    glUniform1i(windowHeightLocation, WINDOW_HEIGHT);
 
-    // Create vertex data
-    renderer.create_prism_vertex_data();
-    for (int i{0}; i < renderer.prismVertexData.size(); i++) {
-        if (i % 6 == 0) {
-            std::cout << "\n";
-        }
-        std::cout << renderer.prismVertexData[i] << " ";
-    }
+    // Create prism vertex data
+    renderer.createPrism(renderer.VAOs[0], renderer.VBOs[0], renderer.EBOs[0]);  // First pyramid
+    renderer.createPrism(renderer.VAOs[1], renderer.VBOs[1], renderer.EBOs[1]);  // Second pyramid
+    renderer.createPrism(renderer.VAOs[2], renderer.VBOs[2], renderer.EBOs[2]);  // Third pyramid
+
+    // Set initial positions
+    renderer.modelMatrices[0] = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f));
+    renderer.modelMatrices[1] = glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, 0.0f, 0.0f));
+    renderer.modelMatrices[2] = glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 0.0f, 0.0f));
 
     // Set the user-defined pointer to the Renderer instance
     glfwSetWindowUserPointer(window, &renderer);
