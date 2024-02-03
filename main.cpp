@@ -51,28 +51,79 @@ void initializeGLEW() {
     }
 };
 
+class MatrixStack {
+public:
+    MatrixStack() {
+        // Initialize with the identity matrix
+        stack.emplace_back(glm::mat4(1.0f));
+    }
+
+    void Push() {
+        // Duplicate the current top matrix and push it onto the stack
+        stack.push_back(stack.back());
+    }
+
+    void Pop() {
+        // Remove the last matrix from the stack
+        stack.pop_back();
+    }
+
+    void Translate(glm::vec3 xyz) {
+        // Apply translation to the current top matrix
+        stack.back() = glm::translate(stack.back(), xyz);
+    }
+
+    void RotateX(float angle) {
+        // Apply rotation around the Y-axis to the current top matrix
+        stack.back() = glm::rotate(stack.back(), glm::radians(angle), glm::vec3(1.0f, 0.0f, 0.0f));
+    }
+
+    void RotateY(float angle) {
+        // Apply rotation around the Y-axis to the current top matrix
+        stack.back() = glm::rotate(stack.back(), glm::radians(angle), glm::vec3(0.0f, 1.0f, 0.0f));
+    }
+
+    void RotateZ(float angle) {
+        // Apply rotation around the Y-axis to the current top matrix
+        stack.back() = glm::rotate(stack.back(), glm::radians(angle), glm::vec3(0.0f, 0.0f, 1.0f));
+    }
+
+    void Scale(glm::vec3 xyz) {
+        // Apply a scaling to the current top matrix
+        stack.back() = glm::scale(stack.back(), xyz);
+    }
+
+    [[nodiscard]] glm::mat4 Top() const {
+        // Get the current top matrix
+        return stack.back();
+    }
+
+private:
+    std::vector<glm::mat4> stack;
+};
+
 class Renderer {
 public:
-    std::vector<GLuint> VBOs;
-    std::vector<GLuint> VAOs;
-    std::vector<GLuint> EBOs;
+    GLuint VBO;
+    GLuint VAO;
+    GLuint EBO;
     std::vector<GLuint> vertex_indices;
-    std::vector<glm::mat4> modelMatrices;
-    void createPrism(GLuint &VAO, GLuint &VBO, GLuint &EBO) {
+    glm::mat4 modelMatrix;
+    void createCube(GLuint &VAO_, GLuint &VBO_, GLuint &EBO_) {
         // Vertex data for the prism 1
         std::vector<GLfloat> prismVertexData = {
                 // Prism 1
                 // Face (front)
-                -0.25f, -0.25f, 0.75f, 1.0f, 0.0f, 0.0f,  // Bottom-left-red
-                0.25f, -0.25f, 0.75f, 0.0f, 1.0f, 0.0f,   // Bottom-right-green
-                0.25f, 0.25f, 0.75f, 0.0f, 0.0f, 1.0f,    // Top-right-blue
-                -0.25f, 0.25f, 0.75f, 1.0f, 1.0f, 0.0f,   // Top-left-yellow
+                -0.5f, -0.5f, 0.5f, 1.0f, 0.0f, 0.0f,  // Bottom-left-red
+                0.5f, -0.5f, 0.5f, 0.0f, 1.0f, 0.0f,   // Bottom-right-green
+                0.5f, 0.5f, 0.5f, 0.0f, 0.0f, 1.0f,    // Top-right-blue
+                -0.5f, 0.5f, 0.5f, 1.0f, 1.0f, 0.0f,   // Top-left-yellow
 
                 // Face (back)
-                -0.25f, -0.25f, -0.75f, 1.0f, 0.0f, 0.0f,  // Bottom-left-red
-                0.25f, -0.25f, -0.75f, 0.0f, 1.0f, 0.0f,   // Bottom-right-green
-                0.25f, 0.25f, -0.75f, 0.0f, 0.0f, 1.0f,    // Top-right-blue
-                -0.25f, 0.25f, -0.75f, 1.0f, 1.0f, 0.0f    // Top-left-yellow
+                -0.5f, -0.5f, -0.5f, 1.0f, 0.0f, 0.0f,  // Bottom-left-red
+                0.5f, -0.5f, -0.5f, 0.0f, 1.0f, 0.0f,   // Bottom-right-green
+                0.5f, 0.5f, -0.5f, 0.0f, 0.0f, 1.0f,    // Top-right-blue
+                -0.5f, 0.5f, -0.5f, 1.0f, 1.0f, 0.0f    // Top-left-yellow
         };
 
         vertex_indices = {
@@ -159,8 +210,8 @@ public:
         )";
     }
 
-    Renderer() : shaderProgram(0), VAOs(3), VBOs(3), EBOs(3), vertex_indices(0),
-                 modelMatrices(3), vertexShaderSource(nullptr), fragmentShaderSource(nullptr) {
+    Renderer() : shaderProgram(0), VAO(0), VBO(0), EBO(0), vertex_indices(0),
+                 modelMatrix(0), vertexShaderSource(nullptr), fragmentShaderSource(nullptr) {
 
         // Enable depth testing
         glEnable(GL_DEPTH_TEST);
@@ -258,30 +309,207 @@ public:
         }
     }
 
-    void drawPrism(GLuint VAO, GLuint EBO, glm::mat4 view, glm::mat4 model, glm::mat4 projection, const std::vector<GLuint>& ebo_indices) const{
-        glUseProgram(shaderProgram);
+    void drawGrabber(glm::mat4 view, glm::mat4 model, glm::mat4 projection, GLFWwindow* window) const {
+        MatrixStack modelToCameraStack;
 
-        GLint elapsedTimeLocation = glGetUniformLocation(shaderProgram, "fElapsedTime");
-        glUniform1d(elapsedTimeLocation, glfwGetTime());
+        glUseProgram(shaderProgram);
+        glBindVertexArray(VAO);
+
+        glm::vec3 posBase = {0.0f, 0.0f, 0.0f};
+        GLfloat angBase = -60.0f;
+        modelToCameraStack.Translate(posBase);
+        modelToCameraStack.RotateY(angBase);
+
+        glm::vec3 posBaseLeft = {-1.0f, 0.0f, 0.0f};
+        glm::vec3 posBaseRight = {1.0f, 0.0f, 0.0f};
+        glm::vec3 scaleBaseZ = {1.0f, 1.0f, 3.0f};
 
         GLint viewMatrixLocation = glGetUniformLocation(shaderProgram, "viewMatrix");
         glUniformMatrix4fv(viewMatrixLocation, 1, GL_FALSE, glm::value_ptr(view));
-
         GLint modelMatrixLocation = glGetUniformLocation(shaderProgram, "modelMatrix");
         glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE, glm::value_ptr(model));
-
         GLint projectionMatrixLocation = glGetUniformLocation(shaderProgram, "projectionMatrix");
         glUniformMatrix4fv(projectionMatrixLocation, 1, GL_FALSE, glm::value_ptr(projection));
 
-        glBindVertexArray(VAO);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-        glDrawElements(GL_TRIANGLES, static_cast<GLint>(ebo_indices.size()),
-                       GL_UNSIGNED_INT, nullptr);
+        // Base Spin	A	D
+        static float baseSpinAngle{0.0f};
+        // Function to handle keyboard input
+        if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
+            if (baseSpinAngle < 45.0f) {
+                baseSpinAngle += 15.0f;
+            }
+            if (baseSpinAngle == 45.0f) {
+                std::cout << "MAXIMUM ANTI-CLOCKWISE BASE SPIN REACHED!" << "\n";
+            }
+        }
+        if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
+            if (baseSpinAngle > -45.0f) {
+                baseSpinAngle -= 15.0f;
+            }
+            if (baseSpinAngle == -45.0f) {
+                std::cout << "MAXIMUM CLOCKWISE BASE SPIN REACHED!" << "\n";
+            }
+        }
+
+        //Draw left base.
+        {
+            modelToCameraStack.Push();
+            modelToCameraStack.Translate(posBaseLeft);
+            modelToCameraStack.RotateY(baseSpinAngle);
+            modelToCameraStack.Scale(scaleBaseZ);
+            glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE,
+                               glm::value_ptr(modelToCameraStack.Top()));
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+            glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(vertex_indices.size()),
+                           GL_UNSIGNED_INT, nullptr);
+            modelToCameraStack.Pop();
+        }
+
+        //Draw right base.
+        {
+            modelToCameraStack.Push();
+            modelToCameraStack.Translate(posBaseRight);
+            modelToCameraStack.RotateY(baseSpinAngle);
+            modelToCameraStack.Scale(scaleBaseZ);
+            glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE,
+                               glm::value_ptr(modelToCameraStack.Top()));
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+            glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(vertex_indices.size()),
+                           GL_UNSIGNED_INT, nullptr);
+            modelToCameraStack.Pop();
+        }
+
+        //Draw main arm.
+        DrawUpperArm(modelToCameraStack, modelMatrixLocation, window);
 
         glBindVertexArray(0);
         glUseProgram(0);
     }
 
+    void DrawUpperArm(MatrixStack modelToCameraStack, GLint modelMatrixLocation, GLFWwindow* window) const {
+        // Function to handle keyboard input
+            if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+                glfwSetWindowShouldClose(window, true);
+            }
+
+
+        // Arm Raise	W	S
+        // Elbow Raise	R	F
+        // Wrist Raise	T	G
+        // Wrist Spin	Z	C
+        // Finger Open/Close	Q	E
+
+        // Draw arm spine
+        {
+            modelToCameraStack.Push();
+            glm::vec3 scaleBaseY = {1.0f, 4.5f, 1.0f};
+            glm::vec3 translateYZ = {0.0f, 2.0f, 1.0f};
+            modelToCameraStack.Translate(translateYZ);
+            modelToCameraStack.RotateX(35.0f);
+            modelToCameraStack.Scale(scaleBaseY);
+            glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE,
+                               glm::value_ptr(modelToCameraStack.Top()));
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+            glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(vertex_indices.size()),
+                           GL_UNSIGNED_INT, nullptr);
+            modelToCameraStack.Pop();
+        }
+
+        // Draw arm neck
+        {
+            modelToCameraStack.Push();
+            glm::vec3 translateYZ = {0.0f, 3.65f, 3.3f};
+            glm::vec3 scaleBaseYZ = {0.75f, 0.65, 2.0f};
+            modelToCameraStack.Translate(translateYZ);
+            modelToCameraStack.RotateX(15.0f);
+            modelToCameraStack.Scale(scaleBaseYZ);
+            glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE,
+                               glm::value_ptr(modelToCameraStack.Top()));
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+            glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(vertex_indices.size()),
+                           GL_UNSIGNED_INT, nullptr);
+        }
+
+        // Draw arm head
+        {
+            modelToCameraStack.Push();
+            glm::vec3 translateYZ = {0.0f, 0.0f, 0.75f};
+            glm::vec3 scaleYZ = {1.15f, 1.25f, 0.4f};
+            modelToCameraStack.Translate(translateYZ);
+            modelToCameraStack.Scale(scaleYZ);
+            glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE,
+                               glm::value_ptr(modelToCameraStack.Top()));
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+            glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(vertex_indices.size()),
+                           GL_UNSIGNED_INT, nullptr);
+        }
+
+        // Draw arm grabber base left
+        {
+            modelToCameraStack.Push();
+            glm::vec3 translateYZ = {0.5f, -1.0f, 0.0f};
+            glm::vec3 scaleYZ = {0.27f, 1.5f, 0.27f};
+            modelToCameraStack.Translate(translateYZ);
+            modelToCameraStack.RotateZ(20.0f);
+            modelToCameraStack.Scale(scaleYZ);
+            glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE,
+                               glm::value_ptr(modelToCameraStack.Top()));
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+            glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(vertex_indices.size()),
+                           GL_UNSIGNED_INT, nullptr);
+            modelToCameraStack.Pop();
+        }
+
+        // Draw arm grabber base right
+        {
+            modelToCameraStack.Push();
+            glm::vec3 translateYZ = {-0.7f, -1.0f, 0.0f};
+            glm::vec3 scaleYZ = {0.27f, 1.5f, 0.27f};
+            modelToCameraStack.Translate(translateYZ);
+            modelToCameraStack.RotateZ(-20.0f);
+            modelToCameraStack.Scale(scaleYZ);
+            glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE,
+                               glm::value_ptr(modelToCameraStack.Top()));
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+            glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(vertex_indices.size()),
+                           GL_UNSIGNED_INT, nullptr);
+            modelToCameraStack.Pop();
+        }
+
+        // Draw arm grabber top left
+        {
+            modelToCameraStack.Push();
+            glm::vec3 translateYZ = {-0.7f, -2.15f, 0.0f};
+            glm::vec3 scaleYZ = {0.27f, 1.2f, 0.27f};
+            modelToCameraStack.Translate(translateYZ);
+            modelToCameraStack.RotateZ(20.0f);
+            modelToCameraStack.Scale(scaleYZ);
+            glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE,
+                               glm::value_ptr(modelToCameraStack.Top()));
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+            glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(vertex_indices.size()),
+                           GL_UNSIGNED_INT, nullptr);
+            modelToCameraStack.Pop();
+        }
+
+        // Draw arm grabber top right
+        {
+            modelToCameraStack.Push();
+            glm::vec3 translateYZ = {0.6f, -2.15f, 0.0f};
+            glm::vec3 scaleYZ = {0.27f, 1.2f, 0.27f};
+            modelToCameraStack.Translate(translateYZ);
+            modelToCameraStack.RotateZ(-20.0f);
+            modelToCameraStack.Scale(scaleYZ);
+            glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE,
+                               glm::value_ptr(modelToCameraStack.Top()));
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+            glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(vertex_indices.size()),
+                           GL_UNSIGNED_INT, nullptr);
+            modelToCameraStack.Pop();
+        }
+    }
+
+    /*
     static std::vector<GLfloat> ComputePositionOffsets(float elapsedTime) {
         std::vector<GLfloat> Offsets;
         float fLoopDuration = 5.0f;
@@ -295,13 +523,14 @@ public:
         Offsets.push_back(fZOffset);
         return Offsets;
     }
+    */
 
-    void perform_render_sequence() {
+    void perform_render_sequence(GLFWwindow* window) const {
         // Clear the color and depth buffers
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // Define camera parameters
-        glm::vec3 cameraPosition = glm::vec3(-4.0f, 7.0f, 10.0f);
+        glm::vec3 cameraPosition = glm::vec3(-4.0f, 2.0f, 20.0f);
         glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
         glm::vec3 upVector = glm::vec3(0.0f, 1.0f, 0.0f);
 
@@ -314,33 +543,13 @@ public:
                                                       static_cast<GLfloat>(WINDOW_HEIGHT),
                                                       0.1f, 100.0f);
 
-        // move modelMatrices[1] and modelMatrices[2]
-        std::vector<float> Offsets = ComputePositionOffsets(static_cast<float>(glfwGetTime()));
-        modelMatrices[1] = glm::translate(modelMatrices[0], glm::vec3(Offsets[0], 0.0f, Offsets[2]));
-        modelMatrices[2] = glm::translate(modelMatrices[1], glm::vec3(Offsets[0], 0.0f, Offsets[2]));
-
-        /*
-        // Set up model matrix and update for rotation
-        float rotationSpeed = 0.1f; // Adjust the speed as needed
-        float angle = rotationSpeed * static_cast<float>(glfwGetTime()); // Using GLFW's time function
-        modelMatrices[0] = glm::rotate(modelMatrices[0], angle, glm::vec3(0.0f, 1.0f, 0.0f));
-        modelMatrices[1] = glm::rotate(modelMatrices[1], angle, glm::vec3(0.0f, 1.0f, 0.0f));
-        modelMatrices[2] = glm::rotate(modelMatrices[2], angle, glm::vec3(0.0f, 1.0f, 0.0f));
-        */
-
-        drawPrism(VAOs[0], EBOs[0], viewMatrix, modelMatrices[0], projectionMatrix, vertex_indices);
-        drawPrism(VAOs[1], EBOs[1], viewMatrix, modelMatrices[1], projectionMatrix, vertex_indices);
-        drawPrism(VAOs[2], EBOs[2], viewMatrix, modelMatrices[2], projectionMatrix, vertex_indices);
+        drawGrabber(viewMatrix, modelMatrix, projectionMatrix, window);
     }
 
     ~Renderer() {
         // Cleanup
-        glDeleteVertexArrays(1, &VAOs[0]);
-        glDeleteVertexArrays(1, &VAOs[1]);
-        glDeleteVertexArrays(1, &VAOs[2]);
-        glDeleteBuffers(1, &VBOs[0]);
-        glDeleteBuffers(1, &VBOs[1]);
-        glDeleteBuffers(1, &VBOs[2]);
+        glDeleteVertexArrays(1, &VAO);
+        glDeleteBuffers(1, &VBO);
         glDeleteProgram(shaderProgram);
     }
 
@@ -378,14 +587,10 @@ int main() {
     glUniform1i(windowHeightLocation, WINDOW_HEIGHT);
 
     // Create prism vertex data
-    renderer.createPrism(renderer.VAOs[0], renderer.VBOs[0], renderer.EBOs[0]);  // First pyramid
-    renderer.createPrism(renderer.VAOs[1], renderer.VBOs[1], renderer.EBOs[1]);  // Second pyramid
-    renderer.createPrism(renderer.VAOs[2], renderer.VBOs[2], renderer.EBOs[2]);  // Third pyramid
+    renderer.createCube(renderer.VAO, renderer.VBO, renderer.EBO);  // First pyramid
 
     // Set initial positions
-    renderer.modelMatrices[0] = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f));
-    renderer.modelMatrices[1] = glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, 0.0f, 0.0f));
-    renderer.modelMatrices[2] = glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 0.0f, 0.0f));
+    renderer.modelMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f));
 
     // Set the user-defined pointer to the Renderer instance
     glfwSetWindowUserPointer(window, &renderer);
@@ -402,11 +607,11 @@ int main() {
 
         // Check if re-render is needed
         if (renderer.resizeFlag) {
-            renderer.perform_render_sequence();
+            renderer.perform_render_sequence(window);
             renderer.resizeFlag = false; // Reset the flag
         }
 
-        renderer.perform_render_sequence();
+        renderer.perform_render_sequence(window);
 
         // Swap front and back buffers
         glfwSwapBuffers(window);
