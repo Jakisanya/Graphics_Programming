@@ -2,6 +2,8 @@
 #include "libraries/glfw-master/include/GLFW/glfw3.h"
 #include "libraries/glm-master/glm/glm.hpp"
 #include "libraries/glm-master/glm/ext.hpp"
+#include "libraries/rapidxml-master/rapidxml.hpp"
+#include "libraries/rapidxml-master/rapidxml_utils.hpp"
 #include <cmath>
 #include <iostream>
 #include <vector>
@@ -132,6 +134,21 @@ public:
     GLuint EBO;
     std::vector<GLuint> vertex_indices;
     glm::mat4 modelMatrix;
+
+    // Build the objects in the world
+    // (1) Load the unit plane mesh using rapidxml; make sure the scale is what I want
+    //      -- Create a VBO, VAO and EBO for the data
+    //      -- Put this functionality in a createPlane() function
+    // (2) Load the trees/forest; parse xml file; make sure scale is what I want
+    //      -- Create a VBO, VAO and EBO for the data
+    //      -- Put this functionality in a createForest() function
+    // (3) Load the columns for the Parthenon xml data; make sure the scale is what I want
+    //      -- Create a VBO, VAO and EBO for the column data
+    //      -- Put the functionality in a createColumn() function; could start from a cube so include createCube()
+    //      -- Create a Matrix Stack for the Parthenon; I'm thinking everything starts from the unit cube
+    //      -- The base and ceiling are made using the Matrix Stack
+
+    // Unit cube
     void createCube(GLuint &VAO_, GLuint &VBO_, GLuint &EBO_) {
         // Vertex data for the prism 1
         std::vector<GLfloat> prismVertexData = {
