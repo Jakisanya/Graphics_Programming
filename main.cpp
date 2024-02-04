@@ -8,6 +8,10 @@
 
 const int WINDOW_WIDTH = 800;
 const int WINDOW_HEIGHT = 600;
+// Define a global variable to track whether the A or D key is pressed
+bool aKeyPressed = false;
+bool dKeyPressed = false;
+
 
 GLFWwindow* initializeGLFW() {
     if (!glfwInit()) {
@@ -50,6 +54,25 @@ void initializeGLEW() {
         exit(EXIT_FAILURE);
     }
 };
+
+// GLFW key callback function
+void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    if (key == GLFW_KEY_A) {
+        if (action == GLFW_PRESS) {
+            aKeyPressed = true;
+        } else if (action == GLFW_RELEASE) {
+            aKeyPressed = false;
+        }
+    }
+
+    if (key == GLFW_KEY_D) {
+        if (action == GLFW_PRESS) {
+            dKeyPressed = true;
+        } else if (action == GLFW_RELEASE) {
+            dKeyPressed = false;
+        }
+    }
+}
 
 class MatrixStack {
 public:
@@ -308,7 +331,7 @@ public:
             glDeleteShader(shader);
         }
     }
-
+    GLfloat baseSpinAngle{0};
     void drawGrabber(glm::mat4 view, glm::mat4 model, glm::mat4 projection, GLFWwindow* window) const {
         MatrixStack modelToCameraStack;
 
@@ -330,26 +353,6 @@ public:
         glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE, glm::value_ptr(model));
         GLint projectionMatrixLocation = glGetUniformLocation(shaderProgram, "projectionMatrix");
         glUniformMatrix4fv(projectionMatrixLocation, 1, GL_FALSE, glm::value_ptr(projection));
-
-        // Base Spin	A	D
-        static float baseSpinAngle{0.0f};
-        // Function to handle keyboard input
-        if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
-            if (baseSpinAngle < 45.0f) {
-                baseSpinAngle += 15.0f;
-            }
-            if (baseSpinAngle == 45.0f) {
-                std::cout << "MAXIMUM ANTI-CLOCKWISE BASE SPIN REACHED!" << "\n";
-            }
-        }
-        if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
-            if (baseSpinAngle > -45.0f) {
-                baseSpinAngle -= 15.0f;
-            }
-            if (baseSpinAngle == -45.0f) {
-                std::cout << "MAXIMUM CLOCKWISE BASE SPIN REACHED!" << "\n";
-            }
-        }
 
         //Draw left base.
         {
@@ -403,9 +406,10 @@ public:
         {
             modelToCameraStack.Push();
             glm::vec3 scaleBaseY = {1.0f, 4.5f, 1.0f};
-            glm::vec3 translateYZ = {0.0f, 2.0f, 1.0f};
+            glm::vec3 translateYZ = {0.0f, 1.75f, 1.0f};
             modelToCameraStack.Translate(translateYZ);
             modelToCameraStack.RotateX(35.0f);
+            modelToCameraStack.RotateY(baseSpinAngle);
             modelToCameraStack.Scale(scaleBaseY);
             glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE,
                                glm::value_ptr(modelToCameraStack.Top()));
@@ -418,10 +422,11 @@ public:
         // Draw arm neck
         {
             modelToCameraStack.Push();
-            glm::vec3 translateYZ = {0.0f, 3.65f, 3.3f};
+            glm::vec3 translateYZ = {0.25f, 3.4f, 3.3f};
             glm::vec3 scaleBaseYZ = {0.75f, 0.65, 2.0f};
             modelToCameraStack.Translate(translateYZ);
             modelToCameraStack.RotateX(15.0f);
+            modelToCameraStack.RotateY(baseSpinAngle);
             modelToCameraStack.Scale(scaleBaseYZ);
             glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE,
                                glm::value_ptr(modelToCameraStack.Top()));
@@ -595,6 +600,9 @@ int main() {
     // Set the user-defined pointer to the Renderer instance
     glfwSetWindowUserPointer(window, &renderer);
 
+    // Set the key callback
+    glfwSetKeyCallback(window, keyCallback);
+
     // Set the resize callback
     glfwSetFramebufferSizeCallback(window, glfw_framebuffer_size_callback);
 
@@ -603,6 +611,27 @@ int main() {
         // Process input
         if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
             glfwSetWindowShouldClose(window, true);
+        }
+
+        // Base Spin	A	D
+        // Function to handle keyboard input
+        if (aKeyPressed) {
+            renderer.baseSpinAngle += 5.0f;
+            aKeyPressed = false;
+            if (renderer.baseSpinAngle > 20.0f) {
+                renderer.baseSpinAngle = 20.0f;
+                std::cout << "MAXIMUM ANTI-CLOCKWISE BASE SPIN REACHED!" << "\n";
+                aKeyPressed = false;
+            }
+        }
+        else if (dKeyPressed) {
+            renderer.baseSpinAngle -= 5.0f;
+            dKeyPressed = false;
+            if (renderer.baseSpinAngle < -20.0f) {
+                renderer.baseSpinAngle = -20.0f;
+                std::cout << "MAXIMUM CLOCKWISE BASE SPIN REACHED!" << "\n";
+                dKeyPressed = false;
+            }
         }
 
         // Check if re-render is needed
