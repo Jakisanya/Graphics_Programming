@@ -132,7 +132,7 @@ public:
     GLuint EBO;
     std::vector<GLuint> vertex_indices;
     glm::mat4 modelMatrix;
-    void createCube(GLuint &VAO_, GLuint &VBO_, GLuint &EBO_) {
+    void createCube() {
         // Vertex data for the prism 1
         std::vector<GLfloat> prismVertexData = {
                 // Prism 1
@@ -592,7 +592,7 @@ int main() {
     glUniform1i(windowHeightLocation, WINDOW_HEIGHT);
 
     // Create prism vertex data
-    renderer.createCube(renderer.VAO, renderer.VBO, renderer.EBO);  // First pyramid
+    renderer.createCube();  // First prism
 
     // Set initial positions
     renderer.modelMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f));
