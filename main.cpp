@@ -2,12 +2,9 @@
 #include "libraries/glfw-master/include/GLFW/glfw3.h"
 #include "libraries/glm-master/glm/glm.hpp"
 #include "libraries/glm-master/glm/ext.hpp"
-#include "libraries/rapidxml-master/rapidxml.hpp"
-#include "libraries/rapidxml-master/rapidxml_utils.hpp"
-#include <cmath>
 #include <iostream>
 #include <vector>
-#include <sstream>
+#include <random>
 
 const int WINDOW_WIDTH = 800;
 const int WINDOW_HEIGHT = 600;
@@ -133,34 +130,38 @@ public:
     GLuint shaderProgram;
     GLuint unitPlaneVBO, unitCubeVBO, unitCylinderVBO, unitConeVBO;
     GLuint unitPlaneVAO, unitCubeVAO, unitCylinderVAO, unitConeVAO;
-    GLuint unitPlaneEBO, unitCubeEBO, unitCylinderEBO, unitConeEBO;
-    std::vector<GLuint> unitPlaneVertexIndices, unitCubeVertexIndices, unitCylinderVertexIndices, unitConeVertexIndices;
-
+    GLuint unitPlaneEBO, unitCubeEBO, unitCylinderEBOTriFan1, unitCylinderEBOTriFan2, unitCylinderEBOTriStrip,
+    unitConeEBOTriFan1, unitConeEBOTriFan2;
+    std::vector<GLuint> unitPlaneVertexIndicesTri, unitCubeVertexIndicesTri, unitCylinderVertexIndicesTriFan1,
+    unitCylinderVertexIndicesTriFan2, unitCylinderVertexIndicesTriStrip, unitConeVertexIndicesTriFan1,
+    unitConeVertexIndicesTriFan2;
     glm::mat4 modelMatrix;
+    GLint viewMatrixLocation, modelMatrixLocation, projectionMatrixLocation;
+    std::vector<glm::vec3> fiftyTreeTranslations;
 
-    // Build the objects in the world
+    Renderer() : shaderProgram(0), unitCubeVAO(0), unitCubeVBO(0), unitCubeEBO(0), unitCubeVertexIndicesTri(0),
+                 unitPlaneVAO(0), unitPlaneVBO(0), unitPlaneEBO(0), unitPlaneVertexIndicesTri(0),
+                 unitCylinderVAO(0), unitCylinderVBO(0), unitCylinderEBOTriFan1(0), unitCylinderEBOTriFan2(0),
+                 unitCylinderEBOTriStrip(0), unitCylinderVertexIndicesTriFan1(0), unitCylinderVertexIndicesTriFan2(0),
+                 unitCylinderVertexIndicesTriStrip(0), unitConeVAO(0), unitConeVBO(0), unitConeEBOTriFan1(0),
+                 unitConeEBOTriFan2(0), unitConeVertexIndicesTriFan1(0), unitConeVertexIndicesTriFan2(0),
+                 modelMatrix(0), viewMatrixLocation(0), modelMatrixLocation(0), projectionMatrixLocation(0),
+                 fiftyTreeTranslations(0), vertexShaderSource(nullptr), fragmentShaderSource(nullptr) {
 
-    //      -- Create a VBO, VAO and EBO for the data
-    //      -- Put this functionality in a createPlane() function
-    // (2) Load the trees/forest; parse xml file; make sure scale is what I want
-    //      -- Create a VBO, VAO and EBO for the data
-    //      -- Put this functionality in a createForest() function
-    // (3) Load the columns for the Parthenon xml data; make sure the scale is what I want
-    //      -- Create a VBO, VAO and EBO for the column data
-    //      -- Put the functionality in a createColumn() function; could start from a cube so include createCube()
-    //      -- Create a Matrix Stack for the Parthenon; I'm thinking everything starts from the unit cube
-    //      -- The base and ceiling are made using the Matrix Stack
+        // Enable depth testing
+        glEnable(GL_DEPTH_TEST);
+    }
 
     void createUnitPlane() {
         // Vertex data for the plan
         std::vector<GLfloat> unitPlaneVertexData = {
-                0.5f, 0.0f, -0.5f,
-                0.5f, 0.0f, 0.5f,
-                -0.5f, 0.0f, 0.5f,
-                -0.5f, 0.0f, -0.5f
+                0.5f, 0.0f, -0.5f, 0.0f, 0.65098f, 0.09804f,
+                0.5f, 0.0f, 0.5f, 0.0f, 0.65098f, 0.09804f,
+                -0.5f, 0.0f, 0.5f, 0.0f, 0.65098f, 0.09804f,
+                -0.5f, 0.0f, -0.5f, 0.0f, 0.65098f, 0.09804f
         };
 
-        unitPlaneVertexIndices = {
+        unitPlaneVertexIndicesTri = {
                 0, 1, 2,
                 0, 2, 1,
                 2, 3, 0,
@@ -183,8 +184,8 @@ public:
         // Add data to VBO and EBO
         glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(unitPlaneVertexData.size() * sizeof(GLfloat)),
         unitPlaneVertexData.data(), GL_STATIC_DRAW);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(unitPlaneVertexIndices.size() * sizeof(GLint)),
-        unitPlaneVertexIndices.data(), GL_STATIC_DRAW);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(unitPlaneVertexIndicesTri.size() * sizeof(GLint)),
+        unitPlaneVertexIndicesTri.data(), GL_STATIC_DRAW);
 
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
@@ -208,7 +209,7 @@ public:
                 -0.5f, 0.5f, -0.5f, 1.0f, 1.0f, 0.0f    // Top-left-yellow
         };
 
-        unitCubeVertexIndices = {
+        unitCubeVertexIndicesTri = {
                 // prism1 indices
                 0, 1, 2, // front
                 2, 3, 0, // front
@@ -240,8 +241,8 @@ public:
         // Add data to VBO and EBO
         glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(unitCubeVertexData.size() * sizeof(GLfloat)),
                      unitCubeVertexData.data(), GL_STATIC_DRAW);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(unitCubeVertexIndices.size() * sizeof(GLint)),
-                     unitCubeVertexIndices.data(), GL_STATIC_DRAW);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(unitCubeVertexIndicesTri.size() * sizeof(GLint)),
+                     unitCubeVertexIndicesTri.data(), GL_STATIC_DRAW);
 
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
@@ -249,103 +250,95 @@ public:
     }
 
     void createUnitCylinder() {
-
         std::vector<GLfloat> unitCylinderVertexData{
-                0.0f, 0.5f, 0.0f,
-                0.5f, 0.5f, 0.0f,
-                0.5f, -0.5f, 0.0f,
-                0.48907381875731f, 0.5f, 0.1039557588888f,
-                0.48907381875731f, -0.5f, 0.1039557588888f,
-                0.45677280077542f, 0.5f, 0.20336815992623f,
-                0.45677280077542f, -0.5f, 0.20336815992623f,
-                0.40450865316151f, 0.5f, 0.29389241146627f,
-                0.40450865316151f, -0.5f, 0.29389241146627f,
-                0.33456556611288f, 0.5f, 0.37157217599218f,
-                0.33456556611288f, -0.5f, 0.37157217599218f,
-                0.2500003830126f, 0.5f, 0.43301248075957f,
-                0.2500003830126f, -0.5f, 0.43301248075957f,
-                0.15450900193016f, 0.5f, 0.47552809414644f,
-                0.15450900193016f, -0.5f, 0.47552809414644f,
-                0.052264847412855f, 0.5f, 0.49726088296277f,
-                0.052264847412855f, -0.5f, 0.49726088296277f,
-                -0.052263527886268f, 0.5f, 0.49726102165048f,
-                -0.052263527886268f, -0.5f, 0.49726102165048f,
-                -0.15450774007312f, 0.5f, 0.47552850414828f,
-                -0.15450774007312f, -0.5f, 0.47552850414828f,
-                -0.24999923397422f, 0.5f, 0.43301314415651f,
-                -0.24999923397422f, -0.5f, 0.43301314415651f,
-                -0.33456458011157f, 0.5f, 0.37157306379065f,
-                -0.33456458011157f, -0.5f, 0.37157306379065f,
-                -0.40450787329018f, 0.5f, 0.29389348486527f,
-                -0.40450787329018f, -0.5f, 0.29389348486527f,
-                -0.45677226111814f, 0.5f, 0.20336937201315f,
-                -0.45677226111814f, -0.5f, 0.20336937201315f,
-                -0.48907354289964f, 0.5f, 0.10395705668972f,
-                -0.48907354289964f, -0.5f, 0.10395705668972f,
-                -0.49999999999824f, 0.5f, 1.3267948966764e-006f,
-                -0.49999999999824f, -0.5f, 1.3267948966764e-006f,
-                -0.48907409461153f, 0.5f, -0.10395446108714f,
-                -0.48907409461153f, -0.5f, -0.10395446108714f,
-                -0.45677334042948f, 0.5f, -0.20336694783787f,
-                -0.45677334042948f, -0.5f, -0.20336694783787f,
-                -0.40450943302999f, 0.5f, -0.2938913380652f,
-                -0.40450943302999f, -0.5f, -0.2938913380652f,
-                -0.33456655211184f, 0.5f, -0.3715712881911f,
-                -0.33456655211184f, -0.5f, -0.3715712881911f,
-                -0.25000153204922f, 0.5f, -0.43301181735958f,
-                -0.25000153204922f, -0.5f, -0.43301181735958f,
-                -0.15451026378611f, 0.5f, -0.47552768414126f,
-                -0.15451026378611f, -0.5f, -0.47552768414126f,
-                -0.052266166939075f, 0.5f, -0.49726074427155f,
-                -0.052266166939075f, -0.5f, -0.49726074427155f,
-                0.052262208359312f, 0.5f, -0.4972611603347f,
-                0.052262208359312f, -0.5f, -0.4972611603347f,
-                0.15450647821499f, 0.5f, -0.47552891414676f,
-                0.15450647821499f, -0.5f, -0.47552891414676f,
-                0.24999808493408f, 0.5f, -0.4330138075504f,
-                0.24999808493408f, -0.5f, -0.4330138075504f,
-                0.3345635941079f, 0.5f, -0.37157395158649f,
-                0.3345635941079f, -0.5f, -0.37157395158649f,
-                0.40450709341601f, 0.5f, -0.2938945582622f,
-                0.40450709341601f, -0.5f, -0.2938945582622f,
-                0.45677172145764f, 0.5f, -0.20337058409865f,
-                0.45677172145764f, -0.5f, -0.20337058409865f,
-                0.48907326703854f, 0.5f, -0.10395835448992f,
-                0.48907326703854f, -0.5f, -0.10395835448992f,
-                0.0f, -0.5f, 0.0f
+                0.0f, 0.5f, 0.0f, 0.4f, 0.286f, 0.227f,
+                0.5f, 0.5f, 0.0f, 0.4f, 0.286f, 0.227f,
+                0.5f, -0.5f, 0.0f, 0.4f, 0.286f, 0.227f,
+                0.48907381875731f, 0.5f, 0.1039557588888f, 0.4f, 0.286f, 0.227f,
+                0.48907381875731f, -0.5f, 0.1039557588888f, 0.4f, 0.286f, 0.227f,
+                0.45677280077542f, 0.5f, 0.20336815992623f, 0.4f, 0.286f, 0.227f,
+                0.45677280077542f, -0.5f, 0.20336815992623f, 0.4f, 0.286f, 0.227f,
+                0.40450865316151f, 0.5f, 0.29389241146627f, 0.4f, 0.286f, 0.227f,
+                0.40450865316151f, -0.5f, 0.29389241146627f, 0.4f, 0.286f, 0.227f,
+                0.33456556611288f, 0.5f, 0.37157217599218f, 0.4f, 0.286f, 0.227f,
+                0.33456556611288f, -0.5f, 0.37157217599218f, 0.4f, 0.286f, 0.227f,
+                0.2500003830126f, 0.5f, 0.43301248075957f, 0.4f, 0.286f, 0.227f,
+                0.2500003830126f, -0.5f, 0.43301248075957f, 0.4f, 0.286f, 0.227f,
+                0.15450900193016f, 0.5f, 0.47552809414644f, 0.4f, 0.286f, 0.227f,
+                0.15450900193016f, -0.5f, 0.47552809414644f, 0.4f, 0.286f, 0.227f,
+                0.052264847412855f, 0.5f, 0.49726088296277f, 0.4f, 0.286f, 0.227f,
+                0.052264847412855f, -0.5f, 0.49726088296277f, 0.4f, 0.286f, 0.227f,
+                -0.052263527886268f, 0.5f, 0.49726102165048f, 0.4f, 0.286f, 0.227f,
+                -0.052263527886268f, -0.5f, 0.49726102165048f, 0.4f, 0.286f, 0.227f,
+                -0.15450774007312f, 0.5f, 0.47552850414828f, 0.4f, 0.286f, 0.227f,
+                -0.15450774007312f, -0.5f, 0.47552850414828f, 0.4f, 0.286f, 0.227f,
+                -0.24999923397422f, 0.5f, 0.43301314415651f, 0.4f, 0.286f, 0.227f,
+                -0.24999923397422f, -0.5f, 0.43301314415651f, 0.4f, 0.286f, 0.227f,
+                -0.33456458011157f, 0.5f, 0.37157306379065f, 0.4f, 0.286f, 0.227f,
+                -0.33456458011157f, -0.5f, 0.37157306379065f, 0.4f, 0.286f, 0.227f,
+                -0.40450787329018f, 0.5f, 0.29389348486527f, 0.4f, 0.286f, 0.227f,
+                -0.40450787329018f, -0.5f, 0.29389348486527f, 0.4f, 0.286f, 0.227f,
+                -0.45677226111814f, 0.5f, 0.20336937201315f, 0.4f, 0.286f, 0.227f,
+                -0.45677226111814f, -0.5f, 0.20336937201315f, 0.4f, 0.286f, 0.227f,
+                -0.48907354289964f, 0.5f, 0.10395705668972f, 0.4f, 0.286f, 0.227f,
+                -0.48907354289964f, -0.5f, 0.10395705668972f, 0.4f, 0.286f, 0.227f,
+                -0.49999999999824f, 0.5f, 1.3267948966764e-006f, 0.4f, 0.286f, 0.227f,
+                -0.49999999999824f, -0.5f, 1.3267948966764e-006f, 0.4f, 0.286f, 0.227f,
+                -0.48907409461153f, 0.5f, -0.10395446108714f, 0.4f, 0.286f, 0.227f,
+                -0.48907409461153f, -0.5f, -0.10395446108714f, 0.4f, 0.286f, 0.227f,
+                -0.45677334042948f, 0.5f, -0.20336694783787f, 0.4f, 0.286f, 0.227f,
+                -0.45677334042948f, -0.5f, -0.20336694783787f, 0.4f, 0.286f, 0.227f,
+                -0.40450943302999f, 0.5f, -0.2938913380652f, 0.4f, 0.286f, 0.227f,
+                -0.40450943302999f, -0.5f, -0.2938913380652f, 0.4f, 0.286f, 0.227f,
+                -0.33456655211184f, 0.5f, -0.3715712881911f, 0.4f, 0.286f, 0.227f,
+                -0.33456655211184f, -0.5f, -0.3715712881911f, 0.4f, 0.286f, 0.227f,
+                -0.25000153204922f, 0.5f, -0.43301181735958f, 0.4f, 0.286f, 0.227f,
+                -0.25000153204922f, -0.5f, -0.43301181735958f, 0.4f, 0.286f, 0.227f,
+                -0.15451026378611f, 0.5f, -0.47552768414126f, 0.4f, 0.286f, 0.227f,
+                -0.15451026378611f, -0.5f, -0.47552768414126f, 0.4f, 0.286f, 0.227f,
+                -0.052266166939075f, 0.5f, -0.49726074427155f, 0.4f, 0.286f, 0.227f,
+                -0.052266166939075f, -0.5f, -0.49726074427155f, 0.4f, 0.286f, 0.227f,
+                0.052262208359312f, 0.5f, -0.4972611603347f, 0.4f, 0.286f, 0.227f,
+                0.052262208359312f, -0.5f, -0.4972611603347f, 0.4f, 0.286f, 0.227f,
+                0.15450647821499f, 0.5f, -0.47552891414676f, 0.4f, 0.286f, 0.227f,
+                0.15450647821499f, -0.5f, -0.47552891414676f, 0.4f, 0.286f, 0.227f,
+                0.24999808493408f, 0.5f, -0.4330138075504f, 0.4f, 0.286f, 0.227f,
+                0.24999808493408f, -0.5f, -0.4330138075504f, 0.4f, 0.286f, 0.227f,
+                0.3345635941079f, 0.5f, -0.37157395158649f, 0.4f, 0.286f, 0.227f,
+                0.3345635941079f, -0.5f, -0.37157395158649f, 0.4f, 0.286f, 0.227f,
+                0.40450709341601f, 0.5f, -0.2938945582622f, 0.4f, 0.286f, 0.227f,
+                0.40450709341601f, -0.5f, -0.2938945582622f, 0.4f, 0.286f, 0.227f,
+                0.45677172145764f, 0.5f, -0.20337058409865f, 0.4f, 0.286f, 0.227f,
+                0.45677172145764f, -0.5f, -0.20337058409865f, 0.4f, 0.286f, 0.227f,
+                0.48907326703854f, 0.5f, -0.10395835448992f, 0.4f, 0.286f, 0.227f,
+                0.48907326703854f, -0.5f, -0.10395835448992f, 0.4f, 0.286f, 0.227f,
+                0.0f, -0.5f, 0.0f, 0.4f, 0.286f, 0.227f
         };
 
-        std::vector<GLfloat> unitCylinderVertexIndices{
-                1, 2, 3,
-                4, 5, 6,
-                7, 8, 9,
-                10, 11, 12,
-                13, 14, 15,
-                16, 17, 18,
-                19, 20, 21,
-                22, 23, 24,
-                25, 26, 27,
-                28, 29, 30,
-                31, 32, 33,
-                34, 35, 36,
-                37, 38, 39,
-                40, 41, 42,
-                43, 44, 45,
-                46, 47, 48,
-                49, 50, 51,
-                52, 53, 54,
-                55, 56, 57,
-                58, 59, 60,
-                1, 2
+        unitCylinderVertexIndicesTriFan1 = {
+                0, 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35, 37, 39, 41, 43, 45, 47, 49, 51,
+                53, 55, 57, 59, 1
         };
 
-        glGenVertexArrays(1, &unitPlaneVAO);
-        glGenBuffers(1, &unitPlaneVBO);
-        glGenBuffers(1, &unitPlaneEBO);
+        unitCylinderVertexIndicesTriFan2 = {
+                61, 60, 58, 56, 54, 52, 50, 48, 46, 44, 42, 40, 38, 36, 34, 32, 30, 28, 26, 24, 22, 20, 18, 16, 14, 12,
+                10, 8, 6, 4, 2, 60
+        };
 
-        glBindVertexArray(unitPlaneVAO);
-        glBindBuffer(GL_ARRAY_BUFFER, unitPlaneVBO);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, unitPlaneEBO);
+        unitCylinderVertexIndicesTriStrip = {
+                1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28,
+                29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54,
+                55, 56, 57, 58, 59, 60, 1, 2
+        };
+
+        glGenVertexArrays(1, &unitCylinderVAO);
+        glGenBuffers(1, &unitCylinderVBO);
+        glGenBuffers(1, &unitCylinderEBOTriStrip);
+        glGenBuffers(1, &unitCylinderEBOTriFan1);
+        glGenBuffers(1, &unitCylinderEBOTriFan2);
+
+        glBindVertexArray(unitCylinderVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, unitCylinderVBO);
 
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)nullptr);
         glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
@@ -353,20 +346,99 @@ public:
         glEnableVertexAttribArray(1);
 
         // Add data to VBO and EBO
-        glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(unitVertexData.size() * sizeof(GLfloat)),
-                     unitPlaneVertexData.data(), GL_STATIC_DRAW);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(unitPlaneVertexIndices.size() * sizeof(GLint)),
-                     unitPlaneVertexIndices.data(), GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(unitCylinderVertexData.size() * sizeof(GLfloat)),
+                     unitCylinderVertexData.data(), GL_STATIC_DRAW);
+
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, unitCylinderEBOTriFan1);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(unitCylinderVertexIndicesTriFan1.size() * sizeof(GLint)),
+                     unitCylinderVertexIndicesTriFan1.data(), GL_STATIC_DRAW);
+
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, unitCylinderEBOTriFan2);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(unitCylinderVertexIndicesTriFan2.size() * sizeof(GLint)),
+                     unitCylinderVertexIndicesTriFan2.data(), GL_STATIC_DRAW);
+
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, unitCylinderEBOTriStrip);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(unitCylinderVertexIndicesTriStrip.size() * sizeof(GLint)),
+                     unitCylinderVertexIndicesTriStrip.data(), GL_STATIC_DRAW);
 
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
         glBindVertexArray(0);
-
-
     }
 
     void createUnitCone() {
+        std::vector<GLfloat> unitConeVertexData {
+                0.0f, 0.866f, 0.0f, 0.094f, 0.369f, 0.247f,
+                0.5f, 0.0f, 0.0f, 0.094f, 0.369f, 0.247f,
+                0.48907381875731f, 0.0f, 0.1039557588888f, 0.094f, 0.369f, 0.247f,
+                0.45677280077542f, 0.0f, 0.20336815992623f, 0.094f, 0.369f, 0.247f,
+                0.40450865316151f, 0.0f, 0.29389241146627f, 0.094f, 0.369f, 0.247f,
+                0.33456556611288f, 0.0f, 0.37157217599218f, 0.094f, 0.369f, 0.247f,
+                0.2500003830126f, 0.0f, 0.43301248075957f, 0.094f, 0.369f, 0.247f,
+                0.15450900193016f, 0.0f, 0.47552809414644f, 0.094f, 0.369f, 0.247f,
+                0.052264847412855f, 0.0f, 0.49726088296277f, 0.094f, 0.369f, 0.247f,
+                -0.052263527886268f, 0.0f, 0.49726102165048f, 0.094f, 0.369f, 0.247f,
+                -0.15450774007312f, 0.0f, 0.47552850414828f, 0.094f, 0.369f, 0.247f,
+                -0.24999923397422f, 0.0f, 0.43301314415651f, 0.094f, 0.369f, 0.247f,
+                -0.33456458011157f, 0.0f, 0.37157306379065f, 0.094f, 0.369f, 0.247f,
+                -0.40450787329018f, 0.0f, 0.29389348486527f, 0.094f, 0.369f, 0.247f,
+                -0.45677226111814f, 0.0f, 0.20336937201315f, 0.094f, 0.369f, 0.247f,
+                -0.48907354289964f, 0.0f, 0.10395705668972f, 0.094f, 0.369f, 0.247f,
+                -0.49999999999824f, 0.0f, 1.3267948966764e-006f, 0.094f, 0.369f, 0.247f,
+                -0.48907409461153f, 0.0f, -0.10395446108714f, 0.094f, 0.369f, 0.247f,
+                -0.45677334042948f, 0.0f, -0.20336694783787f, 0.094f, 0.369f, 0.247f,
+                -0.40450943302999f, 0.0f, -0.2938913380652f, 0.094f, 0.369f, 0.247f,
+                -0.33456655211184f, 0.0f, -0.3715712881911f, 0.094f, 0.369f, 0.247f,
+                -0.25000153204922f, 0.0f, -0.43301181735958f, 0.094f, 0.369f, 0.247f,
+                -0.15451026378611f, 0.0f, -0.47552768414126f, 0.094f, 0.369f, 0.247f,
+                -0.052266166939075f, 0.0f, -0.49726074427155f, 0.094f, 0.369f, 0.247f,
+                0.052262208359312f, 0.0f, -0.4972611603347f, 0.094f, 0.369f, 0.247f,
+                0.15450647821499f, 0.0f, -0.47552891414676f, 0.094f, 0.369f, 0.247f,
+                0.24999808493408f, 0.0f, -0.4330138075504f, 0.094f, 0.369f, 0.247f,
+                0.3345635941079f, 0.0f, -0.37157395158649f, 0.094f, 0.369f, 0.247f,
+                0.40450709341601f, 0.0f, -0.2938945582622f, 0.094f, 0.369f, 0.247f,
+                0.45677172145764f, 0.0f, -0.20337058409865f, 0.094f, 0.369f, 0.247f,
+                0.48907326703854f, 0.0f, -0.10395835448992f, 0.094f, 0.369f, 0.247f,
+                0.0f, 0.0f, 0.0f, 0.094f, 0.369f, 0.247f,
+        };
 
+        unitConeVertexIndicesTriFan1 = {
+                0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27,
+                28, 29, 30, 1
+        };
+
+        unitConeVertexIndicesTriFan2 = {
+                31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10,
+                9, 8, 7, 6, 5, 4, 3, 2, 1, 30
+        };
+
+        glGenVertexArrays(1, &unitConeVAO);
+        glGenBuffers(1, &unitConeVBO);
+        glGenBuffers(1, &unitConeEBOTriFan1);
+        glGenBuffers(1, &unitConeEBOTriFan2);
+
+        glBindVertexArray(unitConeVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, unitConeVBO);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, unitConeEBOTriFan1);
+
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)nullptr);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
+        glEnableVertexAttribArray(0);
+        glEnableVertexAttribArray(1);
+
+        // Add data to VBO and EBO
+        glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(unitConeVertexData.size() * sizeof(GLfloat)),
+                     unitConeVertexData.data(), GL_STATIC_DRAW);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(unitConeVertexIndicesTriFan1.size() * sizeof(GLint)),
+                     unitConeVertexIndicesTriFan1.data(), GL_STATIC_DRAW);
+
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, unitConeEBOTriFan2);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(unitConeVertexIndicesTriFan2.size() * sizeof(GLint)),
+                     unitConeVertexIndicesTriFan2.data(), GL_STATIC_DRAW);
+
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
     }
 
     bool resizeFlag = false;
@@ -410,16 +482,6 @@ public:
                 FragColour = vec4(vertex_colour, 1.0f);
             }
         )";
-    }
-
-    Renderer() : shaderProgram(0), unitCubeVAO(0), unitCubeVBO(0), unitCubeEBO(0), unitCubeVertexIndices(0),
-                 unitPlaneVAO(0), unitPlaneVBO(0), unitPlaneEBO(0), unitPlaneVertexIndices(0),
-                 unitCylinderVAO(0), unitCylinderVBO(0), unitCylinderEBO(0), unitCylinderVertexIndices(0),
-                 unitConeVAO(0), unitConeVBO(0), unitConeEBO(0), unitConeVertexIndices(0),
-                 modelMatrix(0), vertexShaderSource(nullptr), fragmentShaderSource(nullptr) {
-
-        // Enable depth testing
-        glEnable(GL_DEPTH_TEST);
     }
 
     static std::string get_shader_label(GLuint shader) {
@@ -513,211 +575,13 @@ public:
             glDeleteShader(shader);
         }
     }
-    GLfloat baseSpinAngle{0};
-    void drawGrabber(glm::mat4 view, glm::mat4 model, glm::mat4 projection, GLFWwindow* window) const {
-        MatrixStack modelToCameraStack;
 
-        glUseProgram(shaderProgram);
-        glBindVertexArray(unitCubeVAO);
-
-        glm::vec3 posBase = {0.0f, 0.0f, 0.0f};
-        GLfloat angBase = -60.0f;
-        modelToCameraStack.Translate(posBase);
-        modelToCameraStack.RotateY(angBase);
-
-        glm::vec3 posBaseLeft = {-1.0f, 0.0f, 0.0f};
-        glm::vec3 posBaseRight = {1.0f, 0.0f, 0.0f};
-        glm::vec3 scaleBaseZ = {1.0f, 1.0f, 3.0f};
-
-        GLint viewMatrixLocation = glGetUniformLocation(shaderProgram, "viewMatrix");
-        glUniformMatrix4fv(viewMatrixLocation, 1, GL_FALSE, glm::value_ptr(view));
-        GLint modelMatrixLocation = glGetUniformLocation(shaderProgram, "modelMatrix");
-        glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE, glm::value_ptr(model));
-        GLint projectionMatrixLocation = glGetUniformLocation(shaderProgram, "projectionMatrix");
-        glUniformMatrix4fv(projectionMatrixLocation, 1, GL_FALSE, glm::value_ptr(projection));
-
-        //Draw left base.
-        {
-            modelToCameraStack.Push();
-            modelToCameraStack.Translate(posBaseLeft);
-            modelToCameraStack.RotateY(baseSpinAngle);
-            modelToCameraStack.Scale(scaleBaseZ);
-            glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE,
-                               glm::value_ptr(modelToCameraStack.Top()));
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, unitCubeEBO);
-            glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(unitCubeVertexIndices.size()),
-                           GL_UNSIGNED_INT, nullptr);
-            modelToCameraStack.Pop();
-        }
-
-        //Draw right base.
-        {
-            modelToCameraStack.Push();
-            modelToCameraStack.Translate(posBaseRight);
-            modelToCameraStack.RotateY(baseSpinAngle);
-            modelToCameraStack.Scale(scaleBaseZ);
-            glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE,
-                               glm::value_ptr(modelToCameraStack.Top()));
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, unitCubeEBO);
-            glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(unitCubeVertexIndices.size()),
-                           GL_UNSIGNED_INT, nullptr);
-            modelToCameraStack.Pop();
-        }
-
-        //Draw main arm.
-        DrawUpperArm(modelToCameraStack, modelMatrixLocation, window);
-
-        glBindVertexArray(0);
-        glUseProgram(0);
-    }
-
-    void DrawUpperArm(MatrixStack modelToCameraStack, GLint modelMatrixLocation, GLFWwindow* window) const {
-        // Function to handle keyboard input
-            if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
-                glfwSetWindowShouldClose(window, true);
-            }
-
-
-        // Arm Raise	W	S
-        // Elbow Raise	R	F
-        // Wrist Raise	T	G
-        // Wrist Spin	Z	C
-        // Finger Open/Close	Q	E
-
-        // Draw arm spine
-        {
-            modelToCameraStack.Push();
-            glm::vec3 scaleBaseY = {1.0f, 4.5f, 1.0f};
-            glm::vec3 translateYZ = {0.0f, 1.75f, 1.0f};
-            modelToCameraStack.Translate(translateYZ);
-            modelToCameraStack.RotateX(35.0f);
-            modelToCameraStack.RotateY(baseSpinAngle);
-            modelToCameraStack.Scale(scaleBaseY);
-            glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE,
-                               glm::value_ptr(modelToCameraStack.Top()));
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, unitCubeEBO);
-            glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(unitCubeVertexIndices.size()),
-                           GL_UNSIGNED_INT, nullptr);
-            modelToCameraStack.Pop();
-        }
-
-        // Draw arm neck
-        {
-            modelToCameraStack.Push();
-            glm::vec3 translateYZ = {0.25f, 3.4f, 3.3f};
-            glm::vec3 scaleBaseYZ = {0.75f, 0.65, 2.0f};
-            modelToCameraStack.Translate(translateYZ);
-            modelToCameraStack.RotateX(15.0f);
-            modelToCameraStack.RotateY(baseSpinAngle);
-            modelToCameraStack.Scale(scaleBaseYZ);
-            glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE,
-                               glm::value_ptr(modelToCameraStack.Top()));
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, unitCubeEBO);
-            glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(unitCubeVertexIndices.size()),
-                           GL_UNSIGNED_INT, nullptr);
-        }
-
-        // Draw arm head
-        {
-            modelToCameraStack.Push();
-            glm::vec3 translateYZ = {0.0f, 0.0f, 0.75f};
-            glm::vec3 scaleYZ = {1.15f, 1.25f, 0.4f};
-            modelToCameraStack.Translate(translateYZ);
-            modelToCameraStack.Scale(scaleYZ);
-            glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE,
-                               glm::value_ptr(modelToCameraStack.Top()));
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, unitCubeEBO);
-            glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(unitCubeVertexIndices.size()),
-                           GL_UNSIGNED_INT, nullptr);
-        }
-
-        // Draw arm grabber base left
-        {
-            modelToCameraStack.Push();
-            glm::vec3 translateYZ = {0.5f, -1.0f, 0.0f};
-            glm::vec3 scaleYZ = {0.27f, 1.5f, 0.27f};
-            modelToCameraStack.Translate(translateYZ);
-            modelToCameraStack.RotateZ(20.0f);
-            modelToCameraStack.Scale(scaleYZ);
-            glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE,
-                               glm::value_ptr(modelToCameraStack.Top()));
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, unitCubeEBO);
-            glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(unitCubeVertexIndices.size()),
-                           GL_UNSIGNED_INT, nullptr);
-            modelToCameraStack.Pop();
-        }
-
-        // Draw arm grabber base right
-        {
-            modelToCameraStack.Push();
-            glm::vec3 translateYZ = {-0.7f, -1.0f, 0.0f};
-            glm::vec3 scaleYZ = {0.27f, 1.5f, 0.27f};
-            modelToCameraStack.Translate(translateYZ);
-            modelToCameraStack.RotateZ(-20.0f);
-            modelToCameraStack.Scale(scaleYZ);
-            glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE,
-                               glm::value_ptr(modelToCameraStack.Top()));
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, unitCubeEBO);
-            glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(unitCubeVertexIndices.size()),
-                           GL_UNSIGNED_INT, nullptr);
-            modelToCameraStack.Pop();
-        }
-
-        // Draw arm grabber top left
-        {
-            modelToCameraStack.Push();
-            glm::vec3 translateYZ = {-0.7f, -2.15f, 0.0f};
-            glm::vec3 scaleYZ = {0.27f, 1.2f, 0.27f};
-            modelToCameraStack.Translate(translateYZ);
-            modelToCameraStack.RotateZ(20.0f);
-            modelToCameraStack.Scale(scaleYZ);
-            glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE,
-                               glm::value_ptr(modelToCameraStack.Top()));
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, unitCubeEBO);
-            glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(unitCubeVertexIndices.size()),
-                           GL_UNSIGNED_INT, nullptr);
-            modelToCameraStack.Pop();
-        }
-
-        // Draw arm grabber top right
-        {
-            modelToCameraStack.Push();
-            glm::vec3 translateYZ = {0.6f, -2.15f, 0.0f};
-            glm::vec3 scaleYZ = {0.27f, 1.2f, 0.27f};
-            modelToCameraStack.Translate(translateYZ);
-            modelToCameraStack.RotateZ(-20.0f);
-            modelToCameraStack.Scale(scaleYZ);
-            glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE,
-                               glm::value_ptr(modelToCameraStack.Top()));
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, unitCubeEBO);
-            glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(unitCubeVertexIndices.size()),
-                           GL_UNSIGNED_INT, nullptr);
-            modelToCameraStack.Pop();
-        }
-    }
-
-    /*
-    static std::vector<GLfloat> ComputePositionOffsets(float elapsedTime) {
-        std::vector<GLfloat> Offsets;
-        float fLoopDuration = 5.0f;
-        float fScale = (2.0f * (3.14159f * 3.0f)) / fLoopDuration;
-        float fCurrTimeThroughLoop = glm::mod(elapsedTime, fLoopDuration);
-        float fXOffset = glm::cos(fCurrTimeThroughLoop * fScale) * 2.5f;
-        float fYOffset = glm::sin(fCurrTimeThroughLoop * fScale) * 2.5f;
-        float fZOffset = glm::sin(fCurrTimeThroughLoop * fScale) * 2.5f;
-        Offsets.push_back(fXOffset);
-        Offsets.push_back(fYOffset);
-        Offsets.push_back(fZOffset);
-        return Offsets;
-    }
-    */
-
-    void perform_render_sequence(GLFWwindow* window) const {
+    void perform_render_sequence(GLFWwindow* window) {
         // Clear the color and depth buffers
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // Define camera parameters
-        glm::vec3 cameraPosition = glm::vec3(-4.0f, 2.0f, 20.0f);
+        glm::vec3 cameraPosition = glm::vec3(7.0f, 55.0f, 20.0f);
         glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
         glm::vec3 upVector = glm::vec3(0.0f, 1.0f, 0.0f);
 
@@ -730,8 +594,77 @@ public:
                                                       static_cast<GLfloat>(WINDOW_HEIGHT),
                                                       0.1f, 100.0f);
 
-        drawGrabber(viewMatrix, modelMatrix, projectionMatrix, window);
+        viewMatrixLocation = glGetUniformLocation(shaderProgram, "viewMatrix");
+        glUniformMatrix4fv(viewMatrixLocation, 1, GL_FALSE, glm::value_ptr(viewMatrix));
+        modelMatrixLocation = glGetUniformLocation(shaderProgram, "modelMatrix");
+        glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE, glm::value_ptr(modelMatrix));
+        projectionMatrixLocation = glGetUniformLocation(shaderProgram, "projectionMatrix");
+        glUniformMatrix4fv(projectionMatrixLocation, 1, GL_FALSE, glm::value_ptr(projectionMatrix));
+
+        drawTerrain(window);
+        drawForest(window);
+        // drawParthenon(window);
     }
+
+    void drawTerrain(GLFWwindow* window) const {
+        MatrixStack modelToCameraStack;
+
+        glUseProgram(shaderProgram);
+        glBindVertexArray(unitPlaneVAO);
+
+        glm::vec3 sceneScale = {30.0f, 0.0f, 30.0f};
+        modelToCameraStack.Scale(sceneScale);
+        glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE, glm::value_ptr(modelToCameraStack.Top()));
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, unitCubeEBO);
+        glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(unitCubeVertexIndicesTri.size()),
+                       GL_UNSIGNED_INT, nullptr);
+    }
+
+    void drawForest(GLFWwindow* window) const {
+        MatrixStack modelToCameraStack;
+
+        glm::vec3 bigTreeScale = {1.15f, 2.0f, 1.15f};
+        glm::vec3 smallTreeScale = {0.8f, 1.0f, 0.8f};
+
+        for(int i{0}; i < 50; i++) {
+            modelToCameraStack.Translate(fiftyTreeTranslations[i]);
+            if (i % 2 == 0) {
+                modelToCameraStack.Scale(bigTreeScale);
+            }
+            else modelToCameraStack.Scale(smallTreeScale);
+
+            // Draw tree trunk
+            glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE, glm::value_ptr(modelToCameraStack.Top()));
+            glBindVertexArray(unitCylinderVAO);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, unitCylinderEBOTriFan1);
+            glDrawElements(GL_TRIANGLE_FAN, static_cast<GLsizei>(unitCylinderVertexIndicesTriFan1.size()),
+                           GL_UNSIGNED_INT, nullptr);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, unitCylinderEBOTriFan2);
+            glDrawElements(GL_TRIANGLE_FAN, static_cast<GLsizei>(unitCylinderVertexIndicesTriFan2.size()),
+                           GL_UNSIGNED_INT, nullptr);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, unitCylinderEBOTriStrip);
+            glDrawElements(GL_TRIANGLE_STRIP, static_cast<GLsizei>(unitCylinderVertexIndicesTriStrip.size()),
+                           GL_UNSIGNED_INT, nullptr);
+
+        }
+        /*
+        // Draw tree leaves
+        glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE, glm::value_ptr(modelToCameraStack.Top()));
+        glBindVertexArray(unitConeVAO);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, unitConeEBOTriFan1);
+        glDrawElements(GL_TRIANGLE_FAN, static_cast<GLsizei>(unitConeVertexIndicesTriFan1.size()),
+                       GL_UNSIGNED_INT, nullptr);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, unitConeEBOTriFan2);
+        glDrawElements(GL_TRIANGLE_FAN, static_cast<GLsizei>(unitConeVertexIndicesTriFan2.size()),
+                       GL_UNSIGNED_INT, nullptr);
+        */
+
+    }
+
+    void drawParthenon(GLFWwindow* window) const {
+
+    }
+
 
     ~Renderer() {
         // Cleanup
@@ -773,9 +706,25 @@ int main() {
     glUniform1i(windowWidthLocation, WINDOW_WIDTH);
     glUniform1i(windowHeightLocation, WINDOW_HEIGHT);
 
-    // Create starting plane, cube, and ... vertex data
+    // Create starting plane, cube, cone and cylinder
     renderer.createUnitPlane();
     renderer.createUnitCube();
+    renderer.createUnitCone();
+    renderer.createUnitCylinder();
+
+    // Set up random number generator
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<float> dis_x(0.0f, -15.0f);
+    std::uniform_real_distribution<float> dis_z(0.0f, -30.0f);
+
+    // Generate 50 random tree translations
+    for (int i{0}; i < 50; ++i) {
+        float x = dis_x(gen);
+        float z = dis_z(gen);
+        glm::vec3 treeTranslation = {x, 0.0f, z};
+        renderer.fiftyTreeTranslations.push_back(treeTranslation);
+    };
 
     // Set initial positions
     renderer.modelMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f));
@@ -794,27 +743,6 @@ int main() {
         // Process input
         if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
             glfwSetWindowShouldClose(window, true);
-        }
-
-        // Base Spin	A	D
-        // Function to handle keyboard input
-        if (aKeyPressed) {
-            renderer.baseSpinAngle += 5.0f;
-            aKeyPressed = false;
-            if (renderer.baseSpinAngle > 20.0f) {
-                renderer.baseSpinAngle = 20.0f;
-                std::cout << "MAXIMUM ANTI-CLOCKWISE BASE SPIN REACHED!" << "\n";
-                aKeyPressed = false;
-            }
-        }
-        else if (dKeyPressed) {
-            renderer.baseSpinAngle -= 5.0f;
-            dKeyPressed = false;
-            if (renderer.baseSpinAngle < -20.0f) {
-                renderer.baseSpinAngle = -20.0f;
-                std::cout << "MAXIMUM CLOCKWISE BASE SPIN REACHED!" << "\n";
-                dKeyPressed = false;
-            }
         }
 
         // Check if re-render is needed
