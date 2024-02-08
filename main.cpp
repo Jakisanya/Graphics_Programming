@@ -128,8 +128,8 @@ private:
 class Renderer {
 public:
     GLuint shaderProgram;
-    GLuint unitPlaneVBO, unitCubeVBO, unitCylinderVBO, unitConeVBO;
-    GLuint unitPlaneVAO, unitCubeVAO, unitCylinderVAO, unitConeVAO;
+    GLuint unitPlaneVBO, unitCubeVBO, unitCylinderVBO1, unitCylinderVBO2, unitConeVBO;
+    GLuint unitPlaneVAO, unitCubeVAO, unitCylinderVAO1, unitCylinderVAO2, unitConeVAO;
     GLuint unitPlaneEBO, unitCubeEBO, unitCylinderEBOTriFan1, unitCylinderEBOTriFan2, unitCylinderEBOTriStrip,
     unitConeEBOTriFan1, unitConeEBOTriFan2;
     std::vector<GLuint> unitPlaneVertexIndicesTri, unitCubeVertexIndicesTri, unitCylinderVertexIndicesTriFan1,
@@ -137,16 +137,16 @@ public:
     unitConeVertexIndicesTriFan2;
     glm::mat4 modelMatrix;
     GLint viewMatrixLocation, modelMatrixLocation, projectionMatrixLocation;
-    std::vector<glm::vec3> fiftyTreeTranslations;
 
     Renderer() : shaderProgram(0), unitCubeVAO(0), unitCubeVBO(0), unitCubeEBO(0), unitCubeVertexIndicesTri(0),
                  unitPlaneVAO(0), unitPlaneVBO(0), unitPlaneEBO(0), unitPlaneVertexIndicesTri(0),
-                 unitCylinderVAO(0), unitCylinderVBO(0), unitCylinderEBOTriFan1(0), unitCylinderEBOTriFan2(0),
-                 unitCylinderEBOTriStrip(0), unitCylinderVertexIndicesTriFan1(0), unitCylinderVertexIndicesTriFan2(0),
+                 unitCylinderVAO1(0), unitCylinderVAO2(0), unitCylinderVBO1(0), unitCylinderVBO2(0),
+                 unitCylinderEBOTriFan1(0), unitCylinderEBOTriFan2(0), unitCylinderEBOTriStrip(0),
+                 unitCylinderVertexIndicesTriFan1(0), unitCylinderVertexIndicesTriFan2(0),
                  unitCylinderVertexIndicesTriStrip(0), unitConeVAO(0), unitConeVBO(0), unitConeEBOTriFan1(0),
                  unitConeEBOTriFan2(0), unitConeVertexIndicesTriFan1(0), unitConeVertexIndicesTriFan2(0),
                  modelMatrix(0), viewMatrixLocation(0), modelMatrixLocation(0), projectionMatrixLocation(0),
-                 fiftyTreeTranslations(0), vertexShaderSource(nullptr), fragmentShaderSource(nullptr) {
+                 vertexShaderSource(nullptr), fragmentShaderSource(nullptr) {
 
         // Enable depth testing
         glEnable(GL_DEPTH_TEST);
@@ -197,16 +197,16 @@ public:
         // Vertex data for the unit cube
         std::vector<GLfloat> unitCubeVertexData = {
                 // Face (front)
-                -0.5f, -0.5f, 0.5f, 1.0f, 0.0f, 0.0f,  // Bottom-left-red
-                0.5f, -0.5f, 0.5f, 0.0f, 1.0f, 0.0f,   // Bottom-right-green
-                0.5f, 0.5f, 0.5f, 0.0f, 0.0f, 1.0f,    // Top-right-blue
-                -0.5f, 0.5f, 0.5f, 1.0f, 1.0f, 0.0f,   // Top-left-yellow
+                -0.5f, -0.5f, 0.5f, 0.9608f, 0.9569f, 0.9569f,   // Bottom-left
+                0.5f, -0.5f, 0.5f, 0.9608f, 0.9569f, 0.9569f,    // Bottom-right
+                0.5f, 0.5f, 0.5f, 0.7255f, 0.7059f, 0.6941f,    // Top-right
+                -0.5f, 0.5f, 0.5f, 0.7255f, 0.7059f, 0.6941f,   // Top-left
 
                 // Face (back)
-                -0.5f, -0.5f, -0.5f, 1.0f, 0.0f, 0.0f,  // Bottom-left-red
-                0.5f, -0.5f, -0.5f, 0.0f, 1.0f, 0.0f,   // Bottom-right-green
-                0.5f, 0.5f, -0.5f, 0.0f, 0.0f, 1.0f,    // Top-right-blue
-                -0.5f, 0.5f, -0.5f, 1.0f, 1.0f, 0.0f    // Top-left-yellow
+                -0.5f, -0.5f, -0.5f, 0.9608f, 0.9569f, 0.9569f, // Bottom-left
+                0.5f, -0.5f, -0.5f, 0.9608f, 0.9569f, 0.9569f,   // Bottom-right
+                0.5f, 0.5f, -0.5f, 0.7255f, 0.7059f, 0.6941f,   // Top-right
+                -0.5f, 0.5f, -0.5f, 0.7255f, 0.7059f, 0.6941f   // Top-left
         };
 
         unitCubeVertexIndicesTri = {
@@ -250,7 +250,8 @@ public:
     }
 
     void createUnitCylinder() {
-        std::vector<GLfloat> unitCylinderVertexData{
+        // Brown cylinder
+        std::vector<GLfloat> unitCylinderVertexDataColour1{
                 0.0f, 0.5f, 0.0f, 0.4f, 0.286f, 0.227f,
                 0.5f, 0.5f, 0.0f, 0.4f, 0.286f, 0.227f,
                 0.5f, -0.5f, 0.0f, 0.4f, 0.286f, 0.227f,
@@ -315,6 +316,72 @@ public:
                 0.0f, -0.5f, 0.0f, 0.4f, 0.286f, 0.227f
         };
 
+        // Marble cylinder
+        std::vector<GLfloat> unitCylinderVertexDataColour2{
+                0.0f, 0.5f, 0.0f, 0.9608f, 0.9569f, 0.9569f,
+                0.5f, 0.5f, 0.0f, 0.9608f, 0.9569f, 0.9569f,
+                0.5f, -0.5f, 0.0f, 0.9608f, 0.9569f, 0.9569f,
+                0.48907381875731f, 0.5f, 0.1039557588888f, 0.9608f, 0.9569f, 0.9569f,
+                0.48907381875731f, -0.5f, 0.1039557588888f, 0.9608f, 0.9569f, 0.9569f,
+                0.45677280077542f, 0.5f, 0.20336815992623f, 0.9608f, 0.9569f, 0.9569f,
+                0.45677280077542f, -0.5f, 0.20336815992623f, 0.9608f, 0.9569f, 0.9569f,
+                0.40450865316151f, 0.5f, 0.29389241146627f, 0.9608f, 0.9569f, 0.9569f,
+                0.40450865316151f, -0.5f, 0.29389241146627f, 0.9608f, 0.9569f, 0.9569f,
+                0.33456556611288f, 0.5f, 0.37157217599218f, 0.9608f, 0.9569f, 0.9569f,
+                0.33456556611288f, -0.5f, 0.37157217599218f, 0.9608f, 0.9569f, 0.9569f,
+                0.2500003830126f, 0.5f, 0.43301248075957f, 0.9608f, 0.9569f, 0.9569f,
+                0.2500003830126f, -0.5f, 0.43301248075957f, 0.9608f, 0.9569f, 0.9569f,
+                0.15450900193016f, 0.5f, 0.47552809414644f, 0.9608f, 0.9569f, 0.9569f,
+                0.15450900193016f, -0.5f, 0.47552809414644f, 0.9608f, 0.9569f, 0.9569f,
+                0.052264847412855f, 0.5f, 0.49726088296277f, 0.9608f, 0.9569f, 0.9569f,
+                0.052264847412855f, -0.5f, 0.49726088296277f, 0.9608f, 0.9569f, 0.9569f,
+                -0.052263527886268f, 0.5f, 0.49726102165048f, 0.9608f, 0.9569f, 0.9569f,
+                -0.052263527886268f, -0.5f, 0.49726102165048f, 0.9608f, 0.9569f, 0.9569f,
+                -0.15450774007312f, 0.5f, 0.47552850414828f, 0.9608f, 0.9569f, 0.9569f,
+                -0.15450774007312f, -0.5f, 0.47552850414828f, 0.9608f, 0.9569f, 0.9569f,
+                -0.24999923397422f, 0.5f, 0.43301314415651f, 0.9608f, 0.9569f, 0.9569f,
+                -0.24999923397422f, -0.5f, 0.43301314415651f, 0.9608f, 0.9569f, 0.9569f,
+                -0.33456458011157f, 0.5f, 0.37157306379065f, 0.9608f, 0.9569f, 0.9569f,
+                -0.33456458011157f, -0.5f, 0.37157306379065f, 0.9608f, 0.9569f, 0.9569f,
+                -0.40450787329018f, 0.5f, 0.29389348486527f, 0.9608f, 0.9569f, 0.9569f,
+                -0.40450787329018f, -0.5f, 0.29389348486527f, 0.9608f, 0.9569f, 0.9569f,
+                -0.45677226111814f, 0.5f, 0.20336937201315f, 0.9608f, 0.9569f, 0.9569f,
+                -0.45677226111814f, -0.5f, 0.20336937201315f, 0.9608f, 0.9569f, 0.9569f,
+                -0.48907354289964f, 0.5f, 0.10395705668972f, 0.9608f, 0.9569f, 0.9569f,
+                -0.48907354289964f, -0.5f, 0.10395705668972f, 0.9608f, 0.9569f, 0.9569f,
+                -0.49999999999824f, 0.5f, 1.3267948966764e-006f, 0.9608f, 0.9569f, 0.9569f,
+                -0.49999999999824f, -0.5f, 1.3267948966764e-006f, 0.9608f, 0.9569f, 0.9569f,
+                -0.48907409461153f, 0.5f, -0.10395446108714f, 0.9608f, 0.9569f, 0.9569f,
+                -0.48907409461153f, -0.5f, -0.10395446108714f, 0.9608f, 0.9569f, 0.9569f,
+                -0.45677334042948f, 0.5f, -0.20336694783787f, 0.9608f, 0.9569f, 0.9569f,
+                -0.45677334042948f, -0.5f, -0.20336694783787f, 0.9608f, 0.9569f, 0.9569f,
+                -0.40450943302999f, 0.5f, -0.2938913380652f, 0.9608f, 0.9569f, 0.9569f,
+                -0.40450943302999f, -0.5f, -0.2938913380652f, 0.9608f, 0.9569f, 0.9569f,
+                -0.33456655211184f, 0.5f, -0.3715712881911f, 0.9608f, 0.9569f, 0.9569f,
+                -0.33456655211184f, -0.5f, -0.3715712881911f, 0.9608f, 0.9569f, 0.9569f,
+                -0.25000153204922f, 0.5f, -0.43301181735958f, 0.9608f, 0.9569f, 0.9569f,
+                -0.25000153204922f, -0.5f, -0.43301181735958f, 0.9608f, 0.9569f, 0.9569f,
+                -0.15451026378611f, 0.5f, -0.47552768414126f, 0.9608f, 0.9569f, 0.9569f,
+                -0.15451026378611f, -0.5f, -0.47552768414126f, 0.9608f, 0.9569f, 0.9569f,
+                -0.052266166939075f, 0.5f, -0.49726074427155f, 0.9608f, 0.9569f, 0.9569f,
+                -0.052266166939075f, -0.5f, -0.49726074427155f, 0.9608f, 0.9569f, 0.9569f,
+                0.052262208359312f, 0.5f, -0.4972611603347f, 0.9608f, 0.9569f, 0.9569f,
+                0.052262208359312f, -0.5f, -0.4972611603347f, 0.9608f, 0.9569f, 0.9569f,
+                0.15450647821499f, 0.5f, -0.47552891414676f, 0.9608f, 0.9569f, 0.9569f,
+                0.15450647821499f, -0.5f, -0.47552891414676f, 0.9608f, 0.9569f, 0.9569f,
+                0.24999808493408f, 0.5f, -0.4330138075504f, 0.9608f, 0.9569f, 0.9569f,
+                0.24999808493408f, -0.5f, -0.4330138075504f, 0.9608f, 0.9569f, 0.9569f,
+                0.3345635941079f, 0.5f, -0.37157395158649f, 0.9608f, 0.9569f, 0.9569f,
+                0.3345635941079f, -0.5f, -0.37157395158649f, 0.9608f, 0.9569f, 0.9569f,
+                0.40450709341601f, 0.5f, -0.2938945582622f, 0.9608f, 0.9569f, 0.9569f,
+                0.40450709341601f, -0.5f, -0.2938945582622f, 0.9608f, 0.9569f, 0.9569f,
+                0.45677172145764f, 0.5f, -0.20337058409865f, 0.9608f, 0.9569f, 0.9569f,
+                0.45677172145764f, -0.5f, -0.20337058409865f, 0.9608f, 0.9569f, 0.9569f,
+                0.48907326703854f, 0.5f, -0.10395835448992f, 0.9608f, 0.9569f, 0.9569f,
+                0.48907326703854f, -0.5f, -0.10395835448992f, 0.9608f, 0.9569f, 0.9569f,
+                0.0f, -0.5f, 0.0f, 0.9608f, 0.9569f, 0.9569f
+        };
+
         unitCylinderVertexIndicesTriFan1 = {
                 0, 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35, 37, 39, 41, 43, 45, 47, 49, 51,
                 53, 55, 57, 59, 1
@@ -331,24 +398,35 @@ public:
                 55, 56, 57, 58, 59, 60, 1, 2
         };
 
-        glGenVertexArrays(1, &unitCylinderVAO);
-        glGenBuffers(1, &unitCylinderVBO);
+        glGenVertexArrays(1, &unitCylinderVAO1);
+        glGenVertexArrays(1, &unitCylinderVAO2);
+        glGenBuffers(1, &unitCylinderVBO1);
+        glGenBuffers(1, &unitCylinderVBO2);
         glGenBuffers(1, &unitCylinderEBOTriStrip);
         glGenBuffers(1, &unitCylinderEBOTriFan1);
         glGenBuffers(1, &unitCylinderEBOTriFan2);
 
-        glBindVertexArray(unitCylinderVAO);
-        glBindBuffer(GL_ARRAY_BUFFER, unitCylinderVBO);
+        glBindVertexArray(unitCylinderVAO1);
+        glBindBuffer(GL_ARRAY_BUFFER, unitCylinderVBO1);
+        glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(unitCylinderVertexDataColour1.size() * sizeof(GLfloat)),
+                     unitCylinderVertexDataColour1.data(), GL_STATIC_DRAW);
 
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)nullptr);
         glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
         glEnableVertexAttribArray(0);
         glEnableVertexAttribArray(1);
 
-        // Add data to VBO and EBO
-        glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(unitCylinderVertexData.size() * sizeof(GLfloat)),
-                     unitCylinderVertexData.data(), GL_STATIC_DRAW);
+        glBindVertexArray(unitCylinderVAO2);
+        glBindBuffer(GL_ARRAY_BUFFER, unitCylinderVBO2);
+        glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(unitCylinderVertexDataColour2.size() * sizeof(GLfloat)),
+                     unitCylinderVertexDataColour2.data(), GL_STATIC_DRAW);
 
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)nullptr);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
+        glEnableVertexAttribArray(0);
+        glEnableVertexAttribArray(1);
+
+        // Add data to EBOs
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, unitCylinderEBOTriFan1);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(unitCylinderVertexIndicesTriFan1.size() * sizeof(GLint)),
                      unitCylinderVertexIndicesTriFan1.data(), GL_STATIC_DRAW);
@@ -581,7 +659,7 @@ public:
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // Define camera parameters
-        glm::vec3 cameraPosition = glm::vec3(7.0f, 55.0f, 20.0f);
+        glm::vec3 cameraPosition = glm::vec3(25.0f, 120.0f, 100.0f);
         glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
         glm::vec3 upVector = glm::vec3(0.0f, 1.0f, 0.0f);
 
@@ -592,7 +670,7 @@ public:
         glm::mat4 projectionMatrix = glm::perspective(glm::radians(45.0f),
                                                       static_cast<GLfloat>(WINDOW_WIDTH) /
                                                       static_cast<GLfloat>(WINDOW_HEIGHT),
-                                                      0.1f, 100.0f);
+                                                      0.1f, 200.0f);
 
         viewMatrixLocation = glGetUniformLocation(shaderProgram, "viewMatrix");
         glUniformMatrix4fv(viewMatrixLocation, 1, GL_FALSE, glm::value_ptr(viewMatrix));
@@ -603,7 +681,13 @@ public:
 
         drawTerrain(window);
         drawForest(window);
-        // drawParthenon(window);
+        // Draw the Parthenon.
+        {
+            MatrixStack modelToCameraStack;
+            // Set Parthenon position in scene
+            modelToCameraStack.Translate(glm::vec3(20.0f, 0.0f, -10.0f));
+            drawParthenon(modelToCameraStack);
+        }
     }
 
     void drawTerrain(GLFWwindow* window) const {
@@ -612,7 +696,7 @@ public:
         glUseProgram(shaderProgram);
         glBindVertexArray(unitPlaneVAO);
 
-        glm::vec3 sceneScale = {30.0f, 0.0f, 30.0f};
+        glm::vec3 sceneScale = {100.0f, 0.0f, 100.0f};
         modelToCameraStack.Scale(sceneScale);
         glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE, glm::value_ptr(modelToCameraStack.Top()));
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, unitCubeEBO);
@@ -620,22 +704,139 @@ public:
                        GL_UNSIGNED_INT, nullptr);
     }
 
-    void drawForest(GLFWwindow* window) const {
-        MatrixStack modelToCameraStack;
+    struct TreeData
+    {
+        float fXPos;
+        float fZPos;
+        float fTrunkHeight;
+        float fConeHeight;
+    };
 
-        glm::vec3 bigTreeScale = {1.15f, 2.0f, 1.15f};
-        glm::vec3 smallTreeScale = {0.8f, 1.0f, 0.8f};
+    const std::vector<TreeData> g_forest = {
+        {-45.0f, -40.0f, 2.0f, 3.0f},
+        {-42.0f, -35.0f, 2.0f, 3.0f},
+        {-39.0f, -29.0f, 2.0f, 4.0f},
+        {-44.0f, -26.0f, 3.0f, 3.0f},
+        {-40.0f, -22.0f, 2.0f, 4.0f},
+        {-36.0f, -15.0f, 3.0f, 3.0f},
+        {-41.0f, -11.0f, 2.0f, 3.0f},
+        {-37.0f, -6.0f, 3.0f, 3.0f},
+        {-45.0f, 0.0f, 2.0f, 3.0f},
+        {-39.0f, 4.0f, 3.0f, 4.0f},
+        {-36.0f, 8.0f, 2.0f, 3.0f},
+        {-44.0f, 13.0f, 3.0f, 3.0f},
+        {-42.0f, 17.0f, 2.0f, 3.0f},
+        {-38.0f, 23.0f, 3.0f, 4.0f},
+        {-41.0f, 27.0f, 2.0f, 3.0f},
+        {-39.0f, 32.0f, 3.0f, 3.0f},
+        {-44.0f, 37.0f, 3.0f, 4.0f},
+        {-36.0f, 42.0f, 2.0f, 3.0f},
 
-        for(int i{0}; i < 50; i++) {
-            modelToCameraStack.Translate(fiftyTreeTranslations[i]);
-            if (i % 2 == 0) {
-                modelToCameraStack.Scale(bigTreeScale);
-            }
-            else modelToCameraStack.Scale(smallTreeScale);
+        {-32.0f, -45.0f, 2.0f, 3.0f},
+        {-30.0f, -42.0f, 2.0f, 4.0f},
+        {-34.0f, -38.0f, 3.0f, 5.0f},
+        {-33.0f, -35.0f, 3.0f, 4.0f},
+        {-29.0f, -28.0f, 2.0f, 3.0f},
+        {-26.0f, -25.0f, 3.0f, 5.0f},
+        {-35.0f, -21.0f, 3.0f, 4.0f},
+        {-31.0f, -17.0f, 3.0f, 3.0f},
+        {-28.0f, -12.0f, 2.0f, 4.0f},
+        {-29.0f, -7.0f, 3.0f, 3.0f},
+        {-26.0f, -1.0f, 2.0f, 4.0f},
+        {-32.0f, 6.0f, 2.0f, 3.0f},
+        {-30.0f, 10.0f, 3.0f, 5.0f},
+        {-33.0f, 14.0f, 2.0f, 4.0f},
+        {-35.0f, 19.0f, 3.0f, 4.0f},
+        {-28.0f, 22.0f, 2.0f, 3.0f},
+        {-33.0f, 26.0f, 3.0f, 3.0f},
+        {-29.0f, 31.0f, 3.0f, 4.0f},
+        {-32.0f, 38.0f, 2.0f, 3.0f},
+        {-27.0f, 41.0f, 3.0f, 4.0f},
+        {-31.0f, 45.0f, 2.0f, 4.0f},
+        {-28.0f, 48.0f, 3.0f, 5.0f},
 
-            // Draw tree trunk
+        {-25.0f, -48.0f, 2.0f, 3.0f},
+        {-20.0f, -42.0f, 3.0f, 4.0f},
+        {-22.0f, -39.0f, 2.0f, 3.0f},
+        {-19.0f, -34.0f, 2.0f, 3.0f},
+        {-23.0f, -30.0f, 3.0f, 4.0f},
+        {-24.0f, -24.0f, 2.0f, 3.0f},
+        {-16.0f, -21.0f, 2.0f, 3.0f},
+        {-17.0f, -17.0f, 3.0f, 3.0f},
+        {-25.0f, -13.0f, 2.0f, 4.0f},
+        {-23.0f, -8.0f, 2.0f, 3.0f},
+        {-17.0f, -2.0f, 3.0f, 3.0f},
+        {-16.0f, 1.0f, 2.0f, 3.0f},
+        {-19.0f, 4.0f, 3.0f, 3.0f},
+        {-22.0f, 8.0f, 2.0f, 4.0f},
+        {-21.0f, 14.0f, 2.0f, 3.0f},
+        {-16.0f, 19.0f, 2.0f, 3.0f},
+        {-23.0f, 24.0f, 3.0f, 3.0f},
+        {-18.0f, 28.0f, 2.0f, 4.0f},
+        {-24.0f, 31.0f, 2.0f, 3.0f},
+        {-20.0f, 36.0f, 2.0f, 3.0f},
+        {-22.0f, 41.0f, 3.0f, 3.0f},
+        {-21.0f, 45.0f, 2.0f, 3.0f},
+
+        {-12.0f, -40.0f, 2.0f, 4.0f},
+        {-11.0f, -35.0f, 3.0f, 3.0f},
+        {-10.0f, -29.0f, 1.0f, 3.0f},
+        {-9.0f, -26.0f, 2.0f, 2.0f},
+        {-6.0f, -22.0f, 2.0f, 3.0f},
+        {-15.0f, -15.0f, 1.0f, 3.0f},
+        {-8.0f, -11.0f, 2.0f, 3.0f},
+        {-14.0f, -6.0f, 2.0f, 4.0f},
+        {-12.0f, 0.0f, 2.0f, 3.0f},
+        {-7.0f, 4.0f, 2.0f, 2.0f},
+        {-13.0f, 8.0f, 2.0f, 2.0f},
+        {-9.0f, 13.0f, 1.0f, 3.0f},
+        {-13.0f, 17.0f, 3.0f, 4.0f},
+        {-6.0f, 23.0f, 2.0f, 3.0f},
+        {-12.0f, 27.0f, 1.0f, 2.0f},
+        {-8.0f, 32.0f, 2.0f, 3.0f},
+        {-10.0f, 37.0f, 3.0f, 3.0f},
+        {-11.0f, 42.0f, 2.0f, 2.0f},
+
+
+        {15.0f, 5.0f, 2.0f, 3.0f},
+        {15.0f, 10.0f, 2.0f, 3.0f},
+        {15.0f, 15.0f, 2.0f, 3.0f},
+        {15.0f, 20.0f, 2.0f, 3.0f},
+        {15.0f, 25.0f, 2.0f, 3.0f},
+        {15.0f, 30.0f, 2.0f, 3.0f},
+        {15.0f, 35.0f, 2.0f, 3.0f},
+        {15.0f, 40.0f, 2.0f, 3.0f},
+        {15.0f, 45.0f, 2.0f, 3.0f},
+
+        {25.0f, 5.0f, 2.0f, 3.0f},
+        {25.0f, 10.0f, 2.0f, 3.0f},
+        {25.0f, 15.0f, 2.0f, 3.0f},
+        {25.0f, 20.0f, 2.0f, 3.0f},
+        {25.0f, 25.0f, 2.0f, 3.0f},
+        {25.0f, 30.0f, 2.0f, 3.0f},
+        {25.0f, 35.0f, 2.0f, 3.0f},
+        {25.0f, 40.0f, 2.0f, 3.0f},
+        {25.0f, 45.0f, 2.0f, 3.0f}
+    };
+
+    void drawForest(GLFWwindow* window) {
+        for(const TreeData& tree : g_forest) {
+            const TreeData& currTree = tree;
+            MatrixStack modelToCameraStack;
+            modelToCameraStack.Translate(glm::vec3(currTree.fXPos, 0.0f, currTree.fZPos));
+            drawTree(modelToCameraStack, currTree.fTrunkHeight, currTree.fConeHeight);
+        }
+    };
+
+    void drawTree(MatrixStack modelToCameraStack, float fTrunkHeight = 2.0f, float fConeHeight = 3.0f) const {
+        // Draw trunk.
+        {
+            modelToCameraStack.Push();
+            modelToCameraStack.Scale(glm::vec3(1.0f, fTrunkHeight, 1.0f));
+            modelToCameraStack.Translate(glm::vec3(0.0f, 0.5f, 0.0f));
+
             glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE, glm::value_ptr(modelToCameraStack.Top()));
-            glBindVertexArray(unitCylinderVAO);
+            glBindVertexArray(unitCylinderVAO1);
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, unitCylinderEBOTriFan1);
             glDrawElements(GL_TRIANGLE_FAN, static_cast<GLsizei>(unitCylinderVertexIndicesTriFan1.size()),
                            GL_UNSIGNED_INT, nullptr);
@@ -645,24 +846,205 @@ public:
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, unitCylinderEBOTriStrip);
             glDrawElements(GL_TRIANGLE_STRIP, static_cast<GLsizei>(unitCylinderVertexIndicesTriStrip.size()),
                            GL_UNSIGNED_INT, nullptr);
-
+            modelToCameraStack.Pop();
         }
-        /*
-        // Draw tree leaves
-        glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE, glm::value_ptr(modelToCameraStack.Top()));
-        glBindVertexArray(unitConeVAO);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, unitConeEBOTriFan1);
-        glDrawElements(GL_TRIANGLE_FAN, static_cast<GLsizei>(unitConeVertexIndicesTriFan1.size()),
-                       GL_UNSIGNED_INT, nullptr);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, unitConeEBOTriFan2);
-        glDrawElements(GL_TRIANGLE_FAN, static_cast<GLsizei>(unitConeVertexIndicesTriFan2.size()),
-                       GL_UNSIGNED_INT, nullptr);
-        */
 
+        // Draw the treetop.
+        {
+            modelToCameraStack.Push();
+            modelToCameraStack.Translate(glm::vec3(0.0f, fTrunkHeight, 0.0f));
+            modelToCameraStack.Scale(glm::vec3(3.0f, fConeHeight, 3.0f));
+
+            glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE, glm::value_ptr(modelToCameraStack.Top()));
+            glBindVertexArray(unitConeVAO);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, unitConeEBOTriFan1);
+            glDrawElements(GL_TRIANGLE_FAN, static_cast<GLsizei>(unitConeVertexIndicesTriFan1.size()),
+                           GL_UNSIGNED_INT, nullptr);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, unitConeEBOTriFan2);
+            glDrawElements(GL_TRIANGLE_FAN, static_cast<GLsizei>(unitConeVertexIndicesTriFan2.size()),
+                           GL_UNSIGNED_INT, nullptr);
+        }
     }
 
-    void drawParthenon(GLFWwindow* window) const {
+    void drawParthenon(MatrixStack modelToCameraStack) {
+        const float g_fParthenonWidth = 14.0f;
+        const float g_fParthenonLength = 20.0f;
+        const float g_fParthenonColumnHeight = 5.0f;
+        const float g_fParthenonBaseHeight = 1.0f;
+        const float g_fParthenonTopHeight = 2.0f;
 
+        // Draw base.
+        {
+            modelToCameraStack.Push();
+            modelToCameraStack.Scale(glm::vec3(g_fParthenonWidth, g_fParthenonBaseHeight, g_fParthenonLength));
+            modelToCameraStack.Translate(glm::vec3(0.0f, 0.5f, 0.0f));
+            glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE, glm::value_ptr(modelToCameraStack.Top()));
+            glBindVertexArray(unitCubeVAO);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, unitCubeEBO);
+            glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(unitCubeVertexIndicesTri.size()),
+                           GL_UNSIGNED_INT, nullptr);
+            modelToCameraStack.Pop();
+        }
+
+        // Draw top.
+        {
+            modelToCameraStack.Push();
+            modelToCameraStack.Translate(glm::vec3(0.0f, g_fParthenonColumnHeight + g_fParthenonBaseHeight, 0.0f));
+            modelToCameraStack.Scale(glm::vec3(g_fParthenonWidth, g_fParthenonBaseHeight, g_fParthenonLength));
+            modelToCameraStack.Translate(glm::vec3(0.0f, 0.5f, 0.0f));
+            glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE, glm::value_ptr(modelToCameraStack.Top()));
+            glBindVertexArray(unitCubeVAO);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, unitCubeEBO);
+            glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(unitCubeVertexIndicesTri.size()),
+                           GL_UNSIGNED_INT, nullptr);
+            modelToCameraStack.Pop();
+        }
+
+        //Draw columns.
+        const float fFrontZVal = (g_fParthenonLength / 2.0f) - 1.0f;
+        const float fRightXVal = (g_fParthenonWidth / 2.0f) - 1.0f;
+
+        for (int iColumnNum = 0; iColumnNum < int(g_fParthenonWidth / 2.0f); iColumnNum++) {
+            {
+                modelToCameraStack.Push();
+                modelToCameraStack.Translate(glm::vec3((2.0f * static_cast<float>(iColumnNum)) - (g_fParthenonWidth / 2.0f) + 1.0f,
+                                                g_fParthenonBaseHeight, fFrontZVal));
+
+                drawColumn(modelToCameraStack, g_fParthenonColumnHeight);
+                modelToCameraStack.Pop();
+            }
+            {
+                modelToCameraStack.Push();
+                modelToCameraStack.Translate(glm::vec3((2.0f * static_cast<float>(iColumnNum)) - (g_fParthenonWidth / 2.0f) + 1.0f,
+                                                g_fParthenonBaseHeight, -fFrontZVal));
+
+                drawColumn(modelToCameraStack, g_fParthenonColumnHeight);
+                modelToCameraStack.Pop();
+            }
+        }
+
+        // Don't draw the first or last columns, since they've been drawn already.
+        for (int iColumnNum = 1; iColumnNum < int((g_fParthenonLength - 2.0f) / 2.0f); iColumnNum++) {
+            {
+                modelToCameraStack.Push();
+                modelToCameraStack.Translate(glm::vec3(fRightXVal,
+                                                g_fParthenonBaseHeight,
+                                                (2.0f * static_cast<float>(iColumnNum)) - (g_fParthenonLength / 2.0f) + 1.0f));
+
+                drawColumn(modelToCameraStack, g_fParthenonColumnHeight);
+                modelToCameraStack.Pop();
+            }
+            {
+                modelToCameraStack.Push();
+                modelToCameraStack.Translate(glm::vec3(-fRightXVal,
+                                                       g_fParthenonBaseHeight,
+                                                       (2.0f * static_cast<float>(iColumnNum)) - (g_fParthenonLength / 2.0f) + 1.0f));
+
+                drawColumn(modelToCameraStack, g_fParthenonColumnHeight);
+                modelToCameraStack.Pop();
+            }
+        }
+
+        // Draw interior.
+        {
+            modelToCameraStack.Push();
+            modelToCameraStack.Translate(glm::vec3(0.0f, 1.0f, 0.0f));
+            modelToCameraStack.Scale(glm::vec3(g_fParthenonWidth - 6.0f, g_fParthenonColumnHeight,
+                                        g_fParthenonLength - 6.0f));
+            modelToCameraStack.Translate(glm::vec3(0.0f, 0.5f, 0.0f));
+
+            glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE, glm::value_ptr(modelToCameraStack.Top()));
+            glBindVertexArray(unitCubeVAO);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, unitCubeEBO);
+            glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(unitCubeVertexIndicesTri.size()),
+                           GL_UNSIGNED_INT, nullptr);
+            modelToCameraStack.Pop();
+        }
+
+        // Draw headpiece.
+        {
+            modelToCameraStack.Push();
+            modelToCameraStack.Translate(glm::vec3(
+                    0.0f,
+                    g_fParthenonColumnHeight + g_fParthenonBaseHeight + (g_fParthenonTopHeight / 2.0f),
+                    g_fParthenonLength / 2.0f));
+            modelToCameraStack.RotateX(-135.0f);
+            modelToCameraStack.RotateY(45.0f);
+
+            glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE, glm::value_ptr(modelToCameraStack.Top()));
+            glBindVertexArray(unitCubeVAO);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, unitCubeEBO);
+            glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(unitCubeVertexIndicesTri.size()),
+                           GL_UNSIGNED_INT, nullptr);
+            modelToCameraStack.Pop();
+        }
+    }
+
+    // Columns are 1x1 in the X/Z, and fHeight units in the Y.
+    void drawColumn(MatrixStack modelToCameraStack, float fHeight = 5.0f) {
+        const float g_fColumnBaseHeight = 0.25f;
+
+        //Draw the bottom of the column.
+        {
+            modelToCameraStack.Push();
+            modelToCameraStack.Scale(glm::vec3(1.0f, g_fColumnBaseHeight, 1.0f));
+            modelToCameraStack.Translate(glm::vec3(0.0f, 0.5f, 0.0f));
+
+            glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE, glm::value_ptr(modelToCameraStack.Top()));
+            glBindVertexArray(unitCylinderVAO2);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, unitCylinderEBOTriFan1);
+            glDrawElements(GL_TRIANGLE_FAN, static_cast<GLsizei>(unitCylinderVertexIndicesTriFan1.size()),
+                           GL_UNSIGNED_INT, nullptr);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, unitCylinderEBOTriFan2);
+            glDrawElements(GL_TRIANGLE_FAN, static_cast<GLsizei>(unitCylinderVertexIndicesTriFan2.size()),
+                           GL_UNSIGNED_INT, nullptr);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, unitCylinderEBOTriStrip);
+            glDrawElements(GL_TRIANGLE_STRIP, static_cast<GLsizei>(unitCylinderVertexIndicesTriStrip.size()),
+                           GL_UNSIGNED_INT, nullptr);
+            modelToCameraStack.Pop();
+        }
+
+        // Draw the top of the column.
+        {
+            modelToCameraStack.Push();
+            modelToCameraStack.Translate(glm::vec3(0.0f, fHeight - g_fColumnBaseHeight, 0.0f));
+            modelToCameraStack.Scale(glm::vec3(1.0f, g_fColumnBaseHeight, 1.0f));
+            modelToCameraStack.Translate(glm::vec3(0.0f, 0.5f, 0.0f));
+
+            glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE, glm::value_ptr(modelToCameraStack.Top()));
+            glBindVertexArray(unitCylinderVAO2);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, unitCylinderEBOTriFan1);
+            glDrawElements(GL_TRIANGLE_FAN, static_cast<GLsizei>(unitCylinderVertexIndicesTriFan1.size()),
+                           GL_UNSIGNED_INT, nullptr);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, unitCylinderEBOTriFan2);
+            glDrawElements(GL_TRIANGLE_FAN, static_cast<GLsizei>(unitCylinderVertexIndicesTriFan2.size()),
+                           GL_UNSIGNED_INT, nullptr);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, unitCylinderEBOTriStrip);
+            glDrawElements(GL_TRIANGLE_STRIP, static_cast<GLsizei>(unitCylinderVertexIndicesTriStrip.size()),
+                           GL_UNSIGNED_INT, nullptr);
+            modelToCameraStack.Pop();
+        }
+
+        //Draw the main column.
+        {
+            modelToCameraStack.Push();
+            modelToCameraStack.Translate(glm::vec3(0.0f, g_fColumnBaseHeight, 0.0f));
+            modelToCameraStack.Scale(glm::vec3(0.8f, fHeight - (g_fColumnBaseHeight * 2.0f), 0.8f));
+            modelToCameraStack.Translate(glm::vec3(0.0f, 0.5f, 0.0f));
+
+            glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE, glm::value_ptr(modelToCameraStack.Top()));
+            glBindVertexArray(unitCylinderVAO2);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, unitCylinderEBOTriFan1);
+            glDrawElements(GL_TRIANGLE_FAN, static_cast<GLsizei>(unitCylinderVertexIndicesTriFan1.size()),
+                           GL_UNSIGNED_INT, nullptr);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, unitCylinderEBOTriFan2);
+            glDrawElements(GL_TRIANGLE_FAN, static_cast<GLsizei>(unitCylinderVertexIndicesTriFan2.size()),
+                           GL_UNSIGNED_INT, nullptr);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, unitCylinderEBOTriStrip);
+            glDrawElements(GL_TRIANGLE_STRIP, static_cast<GLsizei>(unitCylinderVertexIndicesTriStrip.size()),
+                           GL_UNSIGNED_INT, nullptr);
+            modelToCameraStack.Pop();
+        }
     }
 
 
@@ -711,20 +1093,6 @@ int main() {
     renderer.createUnitCube();
     renderer.createUnitCone();
     renderer.createUnitCylinder();
-
-    // Set up random number generator
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_real_distribution<float> dis_x(0.0f, -15.0f);
-    std::uniform_real_distribution<float> dis_z(0.0f, -30.0f);
-
-    // Generate 50 random tree translations
-    for (int i{0}; i < 50; ++i) {
-        float x = dis_x(gen);
-        float z = dis_z(gen);
-        glm::vec3 treeTranslation = {x, 0.0f, z};
-        renderer.fiftyTreeTranslations.push_back(treeTranslation);
-    };
 
     // Set initial positions
     renderer.modelMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f));
