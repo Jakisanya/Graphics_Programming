@@ -1,3 +1,5 @@
+//--- World in Motion: Shared Uniforms ---\\
+
 #include "libraries/glew-2.1.0/include/GL/glew.h"
 #include "libraries/glfw-master/include/GLFW/glfw3.h"
 #include "libraries/glm-master/glm/glm.hpp"
