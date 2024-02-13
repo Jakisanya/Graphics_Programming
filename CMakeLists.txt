@@ -3,8 +3,10 @@ project(CLionProjects)
 
 set(CMAKE_CXX_STANDARD 20)
 
-add_executable(CLionProjects main.cpp
-    main.cpp)
+add_executable(CLionProjects
+        "xmlparser.cpp"
+        "xmlparser.h"
+        xmlparser.cpp)
 
 add_subdirectory(libraries/fmt)
 add_subdirectory(libraries/glfw-master)
@@ -19,4 +21,4 @@ target_link_libraries(CLionProjects fmt::fmt)
 target_link_libraries(CLionProjects glfw)
 target_link_libraries(CLionProjects glew_s)
 target_link_libraries(CLionProjects glm)
-target_link_libraries(CLionProjects rapidxml)
+target_link_libraries(CLionProjects GTest::gtest_main)

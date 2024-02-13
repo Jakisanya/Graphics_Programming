@@ -2,6 +2,7 @@
 #include "libraries/glfw-master/include/GLFW/glfw3.h"
 #include "libraries/glm-master/glm/glm.hpp"
 #include "libraries/glm-master/glm/ext.hpp"
+#include "libraries/rapidxml-master/rapidxml.hpp"
 #include <iostream>
 #include <vector>
 #include <random>
@@ -25,12 +26,6 @@ bool dKeyPressed = false;
 bool aKeyPressed = false;
 bool eKeyPressed = false;
 bool qKeyPressed = false;
-bool iKeyPressed = false;
-bool kKeyPressed = false;
-bool lKeyPressed = false;
-bool jKeyPressed = false;
-bool oKeyPressed = false;
-bool uKeyPressed = false;
 
 GLuint g_GlobalMatricesUBO;
 static const int g_iGlobalMatricesBindingIndex = 0;
@@ -135,13 +130,16 @@ private:
 class Renderer {
 public:
     ProgramData data{};
-    GLuint unitPlaneVBO{}, unitCubeVBO{}, unitCylinderVBO1{}, unitCylinderVBO2{}, unitConeVBO{};
-    GLuint unitPlaneVAO{}, unitCubeVAO{}, unitCylinderVAO1{}, unitCylinderVAO2{}, unitConeVAO{};
-    GLuint unitPlaneEBO{}, unitCubeEBO{}, unitCylinderEBOTriFan1{}, unitCylinderEBOTriFan2{}, unitCylinderEBOTriStrip{},
-    unitConeEBOTriFan1{}, unitConeEBOTriFan2{};
-    std::vector<GLuint> unitPlaneVertexIndicesTri, unitCubeVertexIndicesTri, unitCylinderVertexIndicesTriFan1,
-    unitCylinderVertexIndicesTriFan2, unitCylinderVertexIndicesTriStrip, unitConeVertexIndicesTriFan1,
-    unitConeVertexIndicesTriFan2;
+    GLuint unitPlaneVBO{}, smallGimbalVBO{}, mediumGimbalVBO{}, largeGimbalVBO{};
+    GLuint unitPlaneVAO{}, smallGimbalVAO{}, mediumGimbalVAO{}, largeGimbalVAO{};
+    GLuint unitPlaneEBO{};
+    std::vector<GLuint> smallGimbalEBOs{}, mediumGimbalEBOs{}, largeGimbalEBOs{};
+    std::vector<GLuint> unitPlaneVertexIndicesTri, smallGimbalVertexIndicesTriStrip1, smallGimbalVertexIndicesTriStrip2,
+            smallGimbalVertexIndicesTriStrip3, smallGimbalVertexIndicesTriStrip4, smallGimbalVertexIndicesTri,
+            mediumGimbalVertexIndicesTriStrip1, mediumGimbalVertexIndicesTriStrip2, mediumGimbalVertexIndicesTriStrip3,
+            mediumGimbalVertexIndicesTriStrip4, mediumGimbalVertexIndicesTri, largeGimbalVertexIndicesTriStrip1,
+            largeGimbalVertexIndicesTriStrip2, largeGimbalVertexIndicesTriStrip3, largeGimbalVertexIndicesTriStrip4,
+            largeGimbalVertexIndicesTri;
     glm::mat4 modelMatrix{};
     GLint viewMatrixLocation{}, projectionMatrixLocation{};
 
@@ -194,331 +192,10 @@ public:
         glBindVertexArray(0);
     };
 
-    // Unit cube
-    void createUnitCube() {
-        // Vertex data for the unit cube
-        std::vector<GLfloat> unitCubeVertexData = {
-                // Face (front)
-                -0.5f, -0.5f, 0.5f, 0.9608f, 0.9569f, 0.9569f,   // Bottom-left
-                0.5f, -0.5f, 0.5f, 0.9608f, 0.9569f, 0.9569f,    // Bottom-right
-                0.5f, 0.5f, 0.5f, 0.7255f, 0.7059f, 0.6941f,    // Top-right
-                -0.5f, 0.5f, 0.5f, 0.7255f, 0.7059f, 0.6941f,   // Top-left
+    void createSmallGimbal() {
+        std::vector<GLfloat> smallGimbalVertexData {
 
-                // Face (back)
-                -0.5f, -0.5f, -0.5f, 0.9608f, 0.9569f, 0.9569f, // Bottom-left
-                0.5f, -0.5f, -0.5f, 0.9608f, 0.9569f, 0.9569f,   // Bottom-right
-                0.5f, 0.5f, -0.5f, 0.7255f, 0.7059f, 0.6941f,   // Top-right
-                -0.5f, 0.5f, -0.5f, 0.7255f, 0.7059f, 0.6941f   // Top-left
-        };
-
-        unitCubeVertexIndicesTri = {
-                // prism1 indices
-                0, 1, 2, // front
-                2, 3, 0, // front
-                4, 5, 6, // back
-                6, 7, 4, // back
-                4, 0, 2, // left
-                2, 7, 4, // left
-                1, 5, 6, // right
-                6, 2, 1, // right
-                3, 2, 6, // top
-                6, 7, 3, // top
-                0, 1, 5, // bottom
-                5, 4, 0,  // bottom
-        };
-
-        glGenVertexArrays(1, &unitCubeVAO);
-        glGenBuffers(1, &unitCubeVBO);
-        glGenBuffers(1, &unitCubeEBO);
-
-        glBindVertexArray(unitCubeVAO);
-        glBindBuffer(GL_ARRAY_BUFFER, unitCubeVBO);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, unitCubeEBO);
-
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)nullptr);
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
-        glEnableVertexAttribArray(0);
-        glEnableVertexAttribArray(1);
-
-        // Add data to VBO and EBO
-        glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(unitCubeVertexData.size() * sizeof(GLfloat)),
-                     unitCubeVertexData.data(), GL_STATIC_DRAW);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(unitCubeVertexIndicesTri.size() * sizeof(GLint)),
-                     unitCubeVertexIndicesTri.data(), GL_STATIC_DRAW);
-
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-        glBindVertexArray(0);
-    }
-
-    void createUnitCylinder() {
-        // Brown cylinder
-        std::vector<GLfloat> unitCylinderVertexDataColour1{
-                0.0f, 0.5f, 0.0f, 0.4f, 0.286f, 0.227f,
-                0.5f, 0.5f, 0.0f, 0.4f, 0.286f, 0.227f,
-                0.5f, -0.5f, 0.0f, 0.4f, 0.286f, 0.227f,
-                0.48907381875731f, 0.5f, 0.1039557588888f, 0.4f, 0.286f, 0.227f,
-                0.48907381875731f, -0.5f, 0.1039557588888f, 0.4f, 0.286f, 0.227f,
-                0.45677280077542f, 0.5f, 0.20336815992623f, 0.4f, 0.286f, 0.227f,
-                0.45677280077542f, -0.5f, 0.20336815992623f, 0.4f, 0.286f, 0.227f,
-                0.40450865316151f, 0.5f, 0.29389241146627f, 0.4f, 0.286f, 0.227f,
-                0.40450865316151f, -0.5f, 0.29389241146627f, 0.4f, 0.286f, 0.227f,
-                0.33456556611288f, 0.5f, 0.37157217599218f, 0.4f, 0.286f, 0.227f,
-                0.33456556611288f, -0.5f, 0.37157217599218f, 0.4f, 0.286f, 0.227f,
-                0.2500003830126f, 0.5f, 0.43301248075957f, 0.4f, 0.286f, 0.227f,
-                0.2500003830126f, -0.5f, 0.43301248075957f, 0.4f, 0.286f, 0.227f,
-                0.15450900193016f, 0.5f, 0.47552809414644f, 0.4f, 0.286f, 0.227f,
-                0.15450900193016f, -0.5f, 0.47552809414644f, 0.4f, 0.286f, 0.227f,
-                0.052264847412855f, 0.5f, 0.49726088296277f, 0.4f, 0.286f, 0.227f,
-                0.052264847412855f, -0.5f, 0.49726088296277f, 0.4f, 0.286f, 0.227f,
-                -0.052263527886268f, 0.5f, 0.49726102165048f, 0.4f, 0.286f, 0.227f,
-                -0.052263527886268f, -0.5f, 0.49726102165048f, 0.4f, 0.286f, 0.227f,
-                -0.15450774007312f, 0.5f, 0.47552850414828f, 0.4f, 0.286f, 0.227f,
-                -0.15450774007312f, -0.5f, 0.47552850414828f, 0.4f, 0.286f, 0.227f,
-                -0.24999923397422f, 0.5f, 0.43301314415651f, 0.4f, 0.286f, 0.227f,
-                -0.24999923397422f, -0.5f, 0.43301314415651f, 0.4f, 0.286f, 0.227f,
-                -0.33456458011157f, 0.5f, 0.37157306379065f, 0.4f, 0.286f, 0.227f,
-                -0.33456458011157f, -0.5f, 0.37157306379065f, 0.4f, 0.286f, 0.227f,
-                -0.40450787329018f, 0.5f, 0.29389348486527f, 0.4f, 0.286f, 0.227f,
-                -0.40450787329018f, -0.5f, 0.29389348486527f, 0.4f, 0.286f, 0.227f,
-                -0.45677226111814f, 0.5f, 0.20336937201315f, 0.4f, 0.286f, 0.227f,
-                -0.45677226111814f, -0.5f, 0.20336937201315f, 0.4f, 0.286f, 0.227f,
-                -0.48907354289964f, 0.5f, 0.10395705668972f, 0.4f, 0.286f, 0.227f,
-                -0.48907354289964f, -0.5f, 0.10395705668972f, 0.4f, 0.286f, 0.227f,
-                -0.49999999999824f, 0.5f, 1.3267948966764e-006f, 0.4f, 0.286f, 0.227f,
-                -0.49999999999824f, -0.5f, 1.3267948966764e-006f, 0.4f, 0.286f, 0.227f,
-                -0.48907409461153f, 0.5f, -0.10395446108714f, 0.4f, 0.286f, 0.227f,
-                -0.48907409461153f, -0.5f, -0.10395446108714f, 0.4f, 0.286f, 0.227f,
-                -0.45677334042948f, 0.5f, -0.20336694783787f, 0.4f, 0.286f, 0.227f,
-                -0.45677334042948f, -0.5f, -0.20336694783787f, 0.4f, 0.286f, 0.227f,
-                -0.40450943302999f, 0.5f, -0.2938913380652f, 0.4f, 0.286f, 0.227f,
-                -0.40450943302999f, -0.5f, -0.2938913380652f, 0.4f, 0.286f, 0.227f,
-                -0.33456655211184f, 0.5f, -0.3715712881911f, 0.4f, 0.286f, 0.227f,
-                -0.33456655211184f, -0.5f, -0.3715712881911f, 0.4f, 0.286f, 0.227f,
-                -0.25000153204922f, 0.5f, -0.43301181735958f, 0.4f, 0.286f, 0.227f,
-                -0.25000153204922f, -0.5f, -0.43301181735958f, 0.4f, 0.286f, 0.227f,
-                -0.15451026378611f, 0.5f, -0.47552768414126f, 0.4f, 0.286f, 0.227f,
-                -0.15451026378611f, -0.5f, -0.47552768414126f, 0.4f, 0.286f, 0.227f,
-                -0.052266166939075f, 0.5f, -0.49726074427155f, 0.4f, 0.286f, 0.227f,
-                -0.052266166939075f, -0.5f, -0.49726074427155f, 0.4f, 0.286f, 0.227f,
-                0.052262208359312f, 0.5f, -0.4972611603347f, 0.4f, 0.286f, 0.227f,
-                0.052262208359312f, -0.5f, -0.4972611603347f, 0.4f, 0.286f, 0.227f,
-                0.15450647821499f, 0.5f, -0.47552891414676f, 0.4f, 0.286f, 0.227f,
-                0.15450647821499f, -0.5f, -0.47552891414676f, 0.4f, 0.286f, 0.227f,
-                0.24999808493408f, 0.5f, -0.4330138075504f, 0.4f, 0.286f, 0.227f,
-                0.24999808493408f, -0.5f, -0.4330138075504f, 0.4f, 0.286f, 0.227f,
-                0.3345635941079f, 0.5f, -0.37157395158649f, 0.4f, 0.286f, 0.227f,
-                0.3345635941079f, -0.5f, -0.37157395158649f, 0.4f, 0.286f, 0.227f,
-                0.40450709341601f, 0.5f, -0.2938945582622f, 0.4f, 0.286f, 0.227f,
-                0.40450709341601f, -0.5f, -0.2938945582622f, 0.4f, 0.286f, 0.227f,
-                0.45677172145764f, 0.5f, -0.20337058409865f, 0.4f, 0.286f, 0.227f,
-                0.45677172145764f, -0.5f, -0.20337058409865f, 0.4f, 0.286f, 0.227f,
-                0.48907326703854f, 0.5f, -0.10395835448992f, 0.4f, 0.286f, 0.227f,
-                0.48907326703854f, -0.5f, -0.10395835448992f, 0.4f, 0.286f, 0.227f,
-                0.0f, -0.5f, 0.0f, 0.4f, 0.286f, 0.227f
-        };
-
-        // Marble cylinder
-        std::vector<GLfloat> unitCylinderVertexDataColour2{
-                0.0f, 0.5f, 0.0f, 0.9608f, 0.9569f, 0.9569f,
-                0.5f, 0.5f, 0.0f, 0.9608f, 0.9569f, 0.9569f,
-                0.5f, -0.5f, 0.0f, 0.9608f, 0.9569f, 0.9569f,
-                0.48907381875731f, 0.5f, 0.1039557588888f, 0.9608f, 0.9569f, 0.9569f,
-                0.48907381875731f, -0.5f, 0.1039557588888f, 0.9608f, 0.9569f, 0.9569f,
-                0.45677280077542f, 0.5f, 0.20336815992623f, 0.9608f, 0.9569f, 0.9569f,
-                0.45677280077542f, -0.5f, 0.20336815992623f, 0.9608f, 0.9569f, 0.9569f,
-                0.40450865316151f, 0.5f, 0.29389241146627f, 0.9608f, 0.9569f, 0.9569f,
-                0.40450865316151f, -0.5f, 0.29389241146627f, 0.9608f, 0.9569f, 0.9569f,
-                0.33456556611288f, 0.5f, 0.37157217599218f, 0.9608f, 0.9569f, 0.9569f,
-                0.33456556611288f, -0.5f, 0.37157217599218f, 0.9608f, 0.9569f, 0.9569f,
-                0.2500003830126f, 0.5f, 0.43301248075957f, 0.9608f, 0.9569f, 0.9569f,
-                0.2500003830126f, -0.5f, 0.43301248075957f, 0.9608f, 0.9569f, 0.9569f,
-                0.15450900193016f, 0.5f, 0.47552809414644f, 0.9608f, 0.9569f, 0.9569f,
-                0.15450900193016f, -0.5f, 0.47552809414644f, 0.9608f, 0.9569f, 0.9569f,
-                0.052264847412855f, 0.5f, 0.49726088296277f, 0.9608f, 0.9569f, 0.9569f,
-                0.052264847412855f, -0.5f, 0.49726088296277f, 0.9608f, 0.9569f, 0.9569f,
-                -0.052263527886268f, 0.5f, 0.49726102165048f, 0.9608f, 0.9569f, 0.9569f,
-                -0.052263527886268f, -0.5f, 0.49726102165048f, 0.9608f, 0.9569f, 0.9569f,
-                -0.15450774007312f, 0.5f, 0.47552850414828f, 0.9608f, 0.9569f, 0.9569f,
-                -0.15450774007312f, -0.5f, 0.47552850414828f, 0.9608f, 0.9569f, 0.9569f,
-                -0.24999923397422f, 0.5f, 0.43301314415651f, 0.9608f, 0.9569f, 0.9569f,
-                -0.24999923397422f, -0.5f, 0.43301314415651f, 0.9608f, 0.9569f, 0.9569f,
-                -0.33456458011157f, 0.5f, 0.37157306379065f, 0.9608f, 0.9569f, 0.9569f,
-                -0.33456458011157f, -0.5f, 0.37157306379065f, 0.9608f, 0.9569f, 0.9569f,
-                -0.40450787329018f, 0.5f, 0.29389348486527f, 0.9608f, 0.9569f, 0.9569f,
-                -0.40450787329018f, -0.5f, 0.29389348486527f, 0.9608f, 0.9569f, 0.9569f,
-                -0.45677226111814f, 0.5f, 0.20336937201315f, 0.9608f, 0.9569f, 0.9569f,
-                -0.45677226111814f, -0.5f, 0.20336937201315f, 0.9608f, 0.9569f, 0.9569f,
-                -0.48907354289964f, 0.5f, 0.10395705668972f, 0.9608f, 0.9569f, 0.9569f,
-                -0.48907354289964f, -0.5f, 0.10395705668972f, 0.9608f, 0.9569f, 0.9569f,
-                -0.49999999999824f, 0.5f, 1.3267948966764e-006f, 0.9608f, 0.9569f, 0.9569f,
-                -0.49999999999824f, -0.5f, 1.3267948966764e-006f, 0.9608f, 0.9569f, 0.9569f,
-                -0.48907409461153f, 0.5f, -0.10395446108714f, 0.9608f, 0.9569f, 0.9569f,
-                -0.48907409461153f, -0.5f, -0.10395446108714f, 0.9608f, 0.9569f, 0.9569f,
-                -0.45677334042948f, 0.5f, -0.20336694783787f, 0.9608f, 0.9569f, 0.9569f,
-                -0.45677334042948f, -0.5f, -0.20336694783787f, 0.9608f, 0.9569f, 0.9569f,
-                -0.40450943302999f, 0.5f, -0.2938913380652f, 0.9608f, 0.9569f, 0.9569f,
-                -0.40450943302999f, -0.5f, -0.2938913380652f, 0.9608f, 0.9569f, 0.9569f,
-                -0.33456655211184f, 0.5f, -0.3715712881911f, 0.9608f, 0.9569f, 0.9569f,
-                -0.33456655211184f, -0.5f, -0.3715712881911f, 0.9608f, 0.9569f, 0.9569f,
-                -0.25000153204922f, 0.5f, -0.43301181735958f, 0.9608f, 0.9569f, 0.9569f,
-                -0.25000153204922f, -0.5f, -0.43301181735958f, 0.9608f, 0.9569f, 0.9569f,
-                -0.15451026378611f, 0.5f, -0.47552768414126f, 0.9608f, 0.9569f, 0.9569f,
-                -0.15451026378611f, -0.5f, -0.47552768414126f, 0.9608f, 0.9569f, 0.9569f,
-                -0.052266166939075f, 0.5f, -0.49726074427155f, 0.9608f, 0.9569f, 0.9569f,
-                -0.052266166939075f, -0.5f, -0.49726074427155f, 0.9608f, 0.9569f, 0.9569f,
-                0.052262208359312f, 0.5f, -0.4972611603347f, 0.9608f, 0.9569f, 0.9569f,
-                0.052262208359312f, -0.5f, -0.4972611603347f, 0.9608f, 0.9569f, 0.9569f,
-                0.15450647821499f, 0.5f, -0.47552891414676f, 0.9608f, 0.9569f, 0.9569f,
-                0.15450647821499f, -0.5f, -0.47552891414676f, 0.9608f, 0.9569f, 0.9569f,
-                0.24999808493408f, 0.5f, -0.4330138075504f, 0.9608f, 0.9569f, 0.9569f,
-                0.24999808493408f, -0.5f, -0.4330138075504f, 0.9608f, 0.9569f, 0.9569f,
-                0.3345635941079f, 0.5f, -0.37157395158649f, 0.9608f, 0.9569f, 0.9569f,
-                0.3345635941079f, -0.5f, -0.37157395158649f, 0.9608f, 0.9569f, 0.9569f,
-                0.40450709341601f, 0.5f, -0.2938945582622f, 0.9608f, 0.9569f, 0.9569f,
-                0.40450709341601f, -0.5f, -0.2938945582622f, 0.9608f, 0.9569f, 0.9569f,
-                0.45677172145764f, 0.5f, -0.20337058409865f, 0.9608f, 0.9569f, 0.9569f,
-                0.45677172145764f, -0.5f, -0.20337058409865f, 0.9608f, 0.9569f, 0.9569f,
-                0.48907326703854f, 0.5f, -0.10395835448992f, 0.9608f, 0.9569f, 0.9569f,
-                0.48907326703854f, -0.5f, -0.10395835448992f, 0.9608f, 0.9569f, 0.9569f,
-                0.0f, -0.5f, 0.0f, 0.9608f, 0.9569f, 0.9569f
-        };
-
-        unitCylinderVertexIndicesTriFan1 = {
-                0, 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35, 37, 39, 41, 43, 45, 47, 49, 51,
-                53, 55, 57, 59, 1
-        };
-
-        unitCylinderVertexIndicesTriFan2 = {
-                61, 60, 58, 56, 54, 52, 50, 48, 46, 44, 42, 40, 38, 36, 34, 32, 30, 28, 26, 24, 22, 20, 18, 16, 14, 12,
-                10, 8, 6, 4, 2, 60
-        };
-
-        unitCylinderVertexIndicesTriStrip = {
-                1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28,
-                29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54,
-                55, 56, 57, 58, 59, 60, 1, 2
-        };
-
-        glGenVertexArrays(1, &unitCylinderVAO1);
-        glGenVertexArrays(1, &unitCylinderVAO2);
-        glGenBuffers(1, &unitCylinderVBO1);
-        glGenBuffers(1, &unitCylinderVBO2);
-        glGenBuffers(1, &unitCylinderEBOTriStrip);
-        glGenBuffers(1, &unitCylinderEBOTriFan1);
-        glGenBuffers(1, &unitCylinderEBOTriFan2);
-
-        glBindVertexArray(unitCylinderVAO1);
-        glBindBuffer(GL_ARRAY_BUFFER, unitCylinderVBO1);
-        glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(unitCylinderVertexDataColour1.size() * sizeof(GLfloat)),
-                     unitCylinderVertexDataColour1.data(), GL_STATIC_DRAW);
-
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)nullptr);
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
-        glEnableVertexAttribArray(0);
-        glEnableVertexAttribArray(1);
-
-        glBindVertexArray(unitCylinderVAO2);
-        glBindBuffer(GL_ARRAY_BUFFER, unitCylinderVBO2);
-        glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(unitCylinderVertexDataColour2.size() * sizeof(GLfloat)),
-                     unitCylinderVertexDataColour2.data(), GL_STATIC_DRAW);
-
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)nullptr);
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
-        glEnableVertexAttribArray(0);
-        glEnableVertexAttribArray(1);
-
-        // Add data to EBOs
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, unitCylinderEBOTriFan1);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(unitCylinderVertexIndicesTriFan1.size() * sizeof(GLint)),
-                     unitCylinderVertexIndicesTriFan1.data(), GL_STATIC_DRAW);
-
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, unitCylinderEBOTriFan2);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(unitCylinderVertexIndicesTriFan2.size() * sizeof(GLint)),
-                     unitCylinderVertexIndicesTriFan2.data(), GL_STATIC_DRAW);
-
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, unitCylinderEBOTriStrip);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(unitCylinderVertexIndicesTriStrip.size() * sizeof(GLint)),
-                     unitCylinderVertexIndicesTriStrip.data(), GL_STATIC_DRAW);
-
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-        glBindVertexArray(0);
-    }
-
-    void createUnitCone() {
-        std::vector<GLfloat> unitConeVertexData {
-                0.0f, 0.866f, 0.0f, 0.094f, 0.369f, 0.247f,
-                0.5f, 0.0f, 0.0f, 0.094f, 0.369f, 0.247f,
-                0.48907381875731f, 0.0f, 0.1039557588888f, 0.094f, 0.369f, 0.247f,
-                0.45677280077542f, 0.0f, 0.20336815992623f, 0.094f, 0.369f, 0.247f,
-                0.40450865316151f, 0.0f, 0.29389241146627f, 0.094f, 0.369f, 0.247f,
-                0.33456556611288f, 0.0f, 0.37157217599218f, 0.094f, 0.369f, 0.247f,
-                0.2500003830126f, 0.0f, 0.43301248075957f, 0.094f, 0.369f, 0.247f,
-                0.15450900193016f, 0.0f, 0.47552809414644f, 0.094f, 0.369f, 0.247f,
-                0.052264847412855f, 0.0f, 0.49726088296277f, 0.094f, 0.369f, 0.247f,
-                -0.052263527886268f, 0.0f, 0.49726102165048f, 0.094f, 0.369f, 0.247f,
-                -0.15450774007312f, 0.0f, 0.47552850414828f, 0.094f, 0.369f, 0.247f,
-                -0.24999923397422f, 0.0f, 0.43301314415651f, 0.094f, 0.369f, 0.247f,
-                -0.33456458011157f, 0.0f, 0.37157306379065f, 0.094f, 0.369f, 0.247f,
-                -0.40450787329018f, 0.0f, 0.29389348486527f, 0.094f, 0.369f, 0.247f,
-                -0.45677226111814f, 0.0f, 0.20336937201315f, 0.094f, 0.369f, 0.247f,
-                -0.48907354289964f, 0.0f, 0.10395705668972f, 0.094f, 0.369f, 0.247f,
-                -0.49999999999824f, 0.0f, 1.3267948966764e-006f, 0.094f, 0.369f, 0.247f,
-                -0.48907409461153f, 0.0f, -0.10395446108714f, 0.094f, 0.369f, 0.247f,
-                -0.45677334042948f, 0.0f, -0.20336694783787f, 0.094f, 0.369f, 0.247f,
-                -0.40450943302999f, 0.0f, -0.2938913380652f, 0.094f, 0.369f, 0.247f,
-                -0.33456655211184f, 0.0f, -0.3715712881911f, 0.094f, 0.369f, 0.247f,
-                -0.25000153204922f, 0.0f, -0.43301181735958f, 0.094f, 0.369f, 0.247f,
-                -0.15451026378611f, 0.0f, -0.47552768414126f, 0.094f, 0.369f, 0.247f,
-                -0.052266166939075f, 0.0f, -0.49726074427155f, 0.094f, 0.369f, 0.247f,
-                0.052262208359312f, 0.0f, -0.4972611603347f, 0.094f, 0.369f, 0.247f,
-                0.15450647821499f, 0.0f, -0.47552891414676f, 0.094f, 0.369f, 0.247f,
-                0.24999808493408f, 0.0f, -0.4330138075504f, 0.094f, 0.369f, 0.247f,
-                0.3345635941079f, 0.0f, -0.37157395158649f, 0.094f, 0.369f, 0.247f,
-                0.40450709341601f, 0.0f, -0.2938945582622f, 0.094f, 0.369f, 0.247f,
-                0.45677172145764f, 0.0f, -0.20337058409865f, 0.094f, 0.369f, 0.247f,
-                0.48907326703854f, 0.0f, -0.10395835448992f, 0.094f, 0.369f, 0.247f,
-                0.0f, 0.0f, 0.0f, 0.094f, 0.369f, 0.247f,
-        };
-
-        unitConeVertexIndicesTriFan1 = {
-                0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27,
-                28, 29, 30, 1
-        };
-
-        unitConeVertexIndicesTriFan2 = {
-                31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10,
-                9, 8, 7, 6, 5, 4, 3, 2, 1, 30
-        };
-
-        glGenVertexArrays(1, &unitConeVAO);
-        glGenBuffers(1, &unitConeVBO);
-        glGenBuffers(1, &unitConeEBOTriFan1);
-        glGenBuffers(1, &unitConeEBOTriFan2);
-
-        glBindVertexArray(unitConeVAO);
-        glBindBuffer(GL_ARRAY_BUFFER, unitConeVBO);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, unitConeEBOTriFan1);
-
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)nullptr);
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
-        glEnableVertexAttribArray(0);
-        glEnableVertexAttribArray(1);
-
-        // Add data to VBO and EBO
-        glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(unitConeVertexData.size() * sizeof(GLfloat)),
-                     unitConeVertexData.data(), GL_STATIC_DRAW);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(unitConeVertexIndicesTriFan1.size() * sizeof(GLint)),
-                     unitConeVertexIndicesTriFan1.data(), GL_STATIC_DRAW);
-
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, unitConeEBOTriFan2);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(unitConeVertexIndicesTriFan2.size() * sizeof(GLint)),
-                     unitConeVertexIndicesTriFan2.data(), GL_STATIC_DRAW);
-
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-        glBindVertexArray(0);
+        }
     }
 
     bool resizeFlag = false;
@@ -1107,101 +784,49 @@ public:
             switch (key) {
                 case GLFW_KEY_W: {
                     wKeyPressed = true;
-                    if (shift_pressed) g_cameraTarget.z -= 0.4f;
-                    else g_cameraTarget.z -= 4.0f;
+                    g_angles.fAngleX += SMALL_ANGLE_INCREMENT;
                     break;
                 }
                 case GLFW_KEY_S: {
                     sKeyPressed = true;
-                    if (shift_pressed) g_cameraTarget.z += 0.4f;
-                    else g_cameraTarget.z += 4.0f;
-                    break;
-                }
-                case GLFW_KEY_D: {
-                    dKeyPressed = true;
-                    if (shift_pressed) g_cameraTarget.x += 0.4f;
-                    else g_cameraTarget.x += 4.0f;
+                    g_angles.fAngleX -= SMALL_ANGLE_INCREMENT;
                     break;
                 }
                 case GLFW_KEY_A: {
                     aKeyPressed = true;
-                    if (shift_pressed) g_cameraTarget.x -= 0.4f;
-                    else g_cameraTarget.x -= 4.0f;
+                    g_angles.fAngleY += SMALL_ANGLE_INCREMENT;
                     break;
                 }
-                case GLFW_KEY_E: {
-                    eKeyPressed = true;
-                    if (shift_pressed) g_cameraTarget.y -= 0.4f;
-                    else g_cameraTarget.y -= 4.0f;
+                case GLFW_KEY_D: {
+                    dKeyPressed = true;
+                    g_angles.fAngleY -= SMALL_ANGLE_INCREMENT;
                     break;
                 }
                 case GLFW_KEY_Q: {
                     qKeyPressed = true;
-                    if (shift_pressed) g_cameraTarget.y += 0.4f;
-                    else g_cameraTarget.y += 4.0f;
+                    g_angles.fAngleZ += SMALL_ANGLE_INCREMENT;
                     break;
                 }
-                case GLFW_KEY_I: {
-                    iKeyPressed = true;
-                    if (shift_pressed) g_sphereCameraRelativePosition.y -= 1.125f;
-                    else g_sphereCameraRelativePosition.y -= 11.25f;
-                    break;
-                }
-                case GLFW_KEY_K: {
-                    kKeyPressed = true;
-                    if (shift_pressed) g_sphereCameraRelativePosition.y += 1.125f;
-                    else g_sphereCameraRelativePosition.y += 11.25f;
-                    break;
-                }
-                case GLFW_KEY_J: {
-                    jKeyPressed = true;
-                    if (shift_pressed) g_sphereCameraRelativePosition.x -= 1.125f;
-                    else g_sphereCameraRelativePosition.x -= 11.25f;
-                    break;
-                }
-                case GLFW_KEY_L: {
-                    lKeyPressed = true;
-                    if (shift_pressed) g_sphereCameraRelativePosition.x += 1.125f;
-                    else g_sphereCameraRelativePosition.x += 11.25f;
-                    break;
-                }
-                case GLFW_KEY_O: {
-                    oKeyPressed = true;
-                    if (shift_pressed) g_sphereCameraRelativePosition.z -= 0.5f;
-                    else g_sphereCameraRelativePosition.z -= 5.0f;
-                    break;
-                }
-                case GLFW_KEY_U: {
-                    uKeyPressed = true;
-                    if (shift_pressed) g_sphereCameraRelativePosition.z += 0.5f;
-                    else g_sphereCameraRelativePosition.z += 5.0f;
+                case GLFW_KEY_E: {
+                    eKeyPressed = true;
+                    g_angles.fAngleZ -= SMALL_ANGLE_INCREMENT;
                     break;
                 }
                 case GLFW_KEY_SPACE: {
-                    g_boolDrawLookatPoint = !g_boolDrawLookatPoint;
-                    printf("Target: %f, %f, %f\n", g_cameraTarget.x, g_cameraTarget.y, g_cameraTarget.z);
-                    printf("Position: %f, %f, %f\n", g_sphereCameraRelativePosition.x,
-                           g_sphereCameraRelativePosition.y, g_sphereCameraRelativePosition.z);
+                    g_boolDrawGimbals = !g_boolDrawGimbals;
                     break;
                 }
                 default:
                     break;
             }
-            g_sphereCameraRelativePosition.y = glm::clamp(g_sphereCameraRelativePosition.y, -78.75f, -1.0f);
-            g_cameraTarget.y = g_cameraTarget.y > 0.0f ? g_cameraTarget.y : 0.0f;
-            g_sphereCameraRelativePosition.z = g_sphereCameraRelativePosition.z > 5.0f ? g_sphereCameraRelativePosition.z : 5.0f;
 
             if (action == GLFW_RELEASE) {
                 wKeyPressed = false;
                 sKeyPressed = false;
                 dKeyPressed = false;
                 aKeyPressed = false;
-                iKeyPressed = false;
-                kKeyPressed = false;
-                lKeyPressed = false;
-                jKeyPressed = false;
-                oKeyPressed = false;
-                uKeyPressed - false;
+                eKeyPressed = false;
+                qKeyPressed = false;
             }
         }
     }
