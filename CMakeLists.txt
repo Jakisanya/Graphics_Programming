@@ -3,10 +3,8 @@ project(CLionProjects)
 
 set(CMAKE_CXX_STANDARD 20)
 
-add_executable(CLionProjects
-        "xmlparser.cpp"
-        "xmlparser.h"
-        xmlparser.cpp)
+add_executable(CLionProjects main.cpp
+        main.cpp)
 
 add_subdirectory(libraries/fmt)
 add_subdirectory(libraries/glfw-master)
