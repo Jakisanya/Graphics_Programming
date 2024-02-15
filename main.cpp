@@ -3,6 +3,7 @@
 #include "libraries/glm-master/glm/glm.hpp"
 #include "libraries/glm-master/glm/ext.hpp"
 #include "xmlparser.cpp"
+#include <cmath>
 #include <iostream>
 #include <vector>
 #include <random>
@@ -224,16 +225,15 @@ public:
 
         glBindVertexArray(smallGimbalVAO);
         glBindBuffer(GL_ARRAY_BUFFER, smallGimbalVBO);
-        glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(smallGimbalVertexData.size() * sizeof(GLfloat)),
-                     smallGimbalVertexData.data(), GL_STATIC_DRAW);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, smallGimbalEBOs[0]);
 
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 7 * sizeof(GLfloat), (GLvoid*)nullptr);
         glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 7 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
         glEnableVertexAttribArray(0);
         glEnableVertexAttribArray(1);
 
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, smallGimbalEBOs[0]);
-
+        glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(smallGimbalVertexData.size() * sizeof(GLfloat)),
+                     smallGimbalVertexData.data(), GL_STATIC_DRAW);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(smallGimbalVertexIndicesTriStrip[0].size() * sizeof(GLint)),
                      smallGimbalVertexIndicesTriStrip[0].data(), GL_STATIC_DRAW);
 
@@ -280,15 +280,15 @@ public:
 
         glBindVertexArray(mediumGimbalVAO);
         glBindBuffer(GL_ARRAY_BUFFER, mediumGimbalVBO);
-        glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(mediumGimbalVertexData.size() * sizeof(GLfloat)),
-                     mediumGimbalVertexData.data(), GL_STATIC_DRAW);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mediumGimbalEBOs[0]);
 
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 7 * sizeof(GLfloat), (GLvoid*)nullptr);
         glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 7 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
         glEnableVertexAttribArray(0);
         glEnableVertexAttribArray(1);
 
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mediumGimbalEBOs[0]);
+        glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(mediumGimbalVertexData.size() * sizeof(GLfloat)),
+                     mediumGimbalVertexData.data(), GL_STATIC_DRAW);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(mediumGimbalVertexIndicesTriStrip[0].size() * sizeof(GLint)),
                      mediumGimbalVertexIndicesTriStrip[0].data(), GL_STATIC_DRAW);
 
@@ -335,15 +335,15 @@ public:
 
         glBindVertexArray(largeGimbalVAO);
         glBindBuffer(GL_ARRAY_BUFFER, largeGimbalVBO);
-        glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(largeGimbalVertexData.size() * sizeof(GLfloat)),
-                     largeGimbalVertexData.data(), GL_STATIC_DRAW);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, largeGimbalEBOs[0]);
 
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 7 * sizeof(GLfloat), (GLvoid*)nullptr);
         glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 7 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
         glEnableVertexAttribArray(0);
         glEnableVertexAttribArray(1);
 
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, largeGimbalEBOs[0]);
+        glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(largeGimbalVertexData.size() * sizeof(GLfloat)),
+                     largeGimbalVertexData.data(), GL_STATIC_DRAW);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(largeGimbalVertexIndicesTriStrip[0].size() * sizeof(GLint)),
                      largeGimbalVertexIndicesTriStrip[0].data(), GL_STATIC_DRAW);
 
@@ -517,6 +517,8 @@ public:
         // Clear the color and depth buffers
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+        glUseProgram(data.shaderProgram);
+
         // Define camera parameters
         glm::vec3 cameraPosition = glm::vec3(0.0f, 0.0f, 300.0f);
         glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
@@ -526,10 +528,9 @@ public:
         glm::mat4 projectionMatrix = glm::perspective(glm::radians(45.0f),
                                                       static_cast<GLfloat>(WINDOW_WIDTH) /
                                                       static_cast<GLfloat>(WINDOW_HEIGHT),
-                                                      0.1f, 600.0f);
+                                                      1.0f, 600.0f);
 
         data.modelMatrixLocation = glGetUniformLocation(data.shaderProgram, "modelMatrix");
-        glUniformMatrix4fv(data.modelMatrixLocation, 1, GL_FALSE, glm::value_ptr(modelMatrix));
         data.gimbalColourLocation = glGetUniformLocation(data.shaderProgram, "gimbalColour");
 
         glBindBuffer(GL_UNIFORM_BUFFER, g_GlobalMatricesUBO);
@@ -551,104 +552,92 @@ public:
         modelMatrixStack.Scale(glm::vec3(3.0, 3.0, 3.0));
         modelMatrixStack.RotateX(-90);
          */
+
+        glUseProgram(0);
     }
 
     void DrawGimbal(MatrixStack modelMatrixStack, GimbalAxis eAxis, glm::vec4 gimbalColour) {
         if (!g_boolDrawGimbals)
             return;
 
-        glUseProgram(data.shaderProgram);
-
         switch (eAxis) {
             case GIMBAL_X_AXIS:
+                modelMatrixStack.Push();
                 glUniformMatrix4fv(data.modelMatrixLocation, 1, GL_FALSE, glm::value_ptr(modelMatrixStack.Top()));
                 glUniformMatrix4fv(data.gimbalColourLocation, 1, GL_FALSE, glm::value_ptr(gimbalColour));
                 glBindVertexArray(smallGimbalVAO);
                 glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, smallGimbalEBOs[0]);
-                glDrawElements(GL_TRIANGLE_STRIP, static_cast<GLint>(smallGimbalVertexIndicesTriStrip[0].size()),
-                               GL_UNSIGNED_INT,
-                               smallGimbalVertexIndicesTriStrip[0].data());
+                glDrawElements(GL_TRIANGLE_STRIP, static_cast<GLsizei>(smallGimbalVertexIndicesTriStrip[0].size()),
+                               GL_UNSIGNED_INT,nullptr);
                 glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, smallGimbalEBOs[1]);
-                glDrawElements(GL_TRIANGLE_STRIP, static_cast<GLint>(smallGimbalVertexIndicesTriStrip[1].size()),
-                               GL_UNSIGNED_INT,
-                               smallGimbalVertexIndicesTriStrip[1].data());
+                glDrawElements(GL_TRIANGLE_STRIP, static_cast<GLsizei>(smallGimbalVertexIndicesTriStrip[1].size()),
+                               GL_UNSIGNED_INT,nullptr);
                 glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, smallGimbalEBOs[2]);
-                glDrawElements(GL_TRIANGLE_STRIP, static_cast<GLint>(smallGimbalVertexIndicesTriStrip[2].size()),
-                               GL_UNSIGNED_INT,
-                               smallGimbalVertexIndicesTriStrip[2].data());
+                glDrawElements(GL_TRIANGLE_STRIP, static_cast<GLsizei>(smallGimbalVertexIndicesTriStrip[2].size()),
+                               GL_UNSIGNED_INT,nullptr);
                 glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, smallGimbalEBOs[3]);
-                glDrawElements(GL_TRIANGLE_STRIP, static_cast<GLint>(smallGimbalVertexIndicesTriStrip[3].size()),
-                               GL_UNSIGNED_INT,
-                               smallGimbalVertexIndicesTriStrip[3].data());
+                glDrawElements(GL_TRIANGLE_STRIP, static_cast<GLsizei>(smallGimbalVertexIndicesTriStrip[3].size()),
+                               GL_UNSIGNED_INT,nullptr);
                 glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, smallGimbalEBOs[4]);
-                glDrawElements(GL_TRIANGLE_STRIP, static_cast<GLint>(smallGimbalVertexIndicesTri[0].size()),
-                               GL_UNSIGNED_INT,
-                               smallGimbalVertexIndicesTri[0].data());
+                glDrawElements(GL_TRIANGLE_STRIP, static_cast<GLsizei>(smallGimbalVertexIndicesTri[0].size()),
+                               GL_UNSIGNED_INT,nullptr);
+                modelMatrixStack.Pop();
                 break;
             case GIMBAL_Y_AXIS:
+                modelMatrixStack.Push();
                 modelMatrixStack.RotateZ(90.0f);
                 modelMatrixStack.RotateX(90.0f);
+
                 glUniformMatrix4fv(data.modelMatrixLocation, 1, GL_FALSE, glm::value_ptr(modelMatrixStack.Top()));
                 glUniformMatrix4fv(data.gimbalColourLocation, 1, GL_FALSE, glm::value_ptr(gimbalColour));
                 glBindVertexArray(mediumGimbalVAO);
                 glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mediumGimbalEBOs[0]);
-                glDrawElements(GL_TRIANGLE_STRIP, static_cast<GLint>(mediumGimbalVertexIndicesTriStrip[0].size()),
-                               GL_UNSIGNED_INT,
-                               mediumGimbalVertexIndicesTriStrip[0].data());
+                glDrawElements(GL_TRIANGLE_STRIP, static_cast<GLsizei>(mediumGimbalVertexIndicesTriStrip[0].size()),
+                               GL_UNSIGNED_INT,nullptr);
                 glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mediumGimbalEBOs[1]);
-                glDrawElements(GL_TRIANGLE_STRIP, static_cast<GLint>(mediumGimbalVertexIndicesTriStrip[1].size()),
-                               GL_UNSIGNED_INT,
-                               mediumGimbalVertexIndicesTriStrip[1].data());
+                glDrawElements(GL_TRIANGLE_STRIP, static_cast<GLsizei>(mediumGimbalVertexIndicesTriStrip[1].size()),
+                               GL_UNSIGNED_INT, nullptr);
                 glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mediumGimbalEBOs[2]);
-                glDrawElements(GL_TRIANGLE_STRIP, static_cast<GLint>(mediumGimbalVertexIndicesTriStrip[2].size()),
-                               GL_UNSIGNED_INT,
-                               mediumGimbalVertexIndicesTriStrip[2].data());
+                glDrawElements(GL_TRIANGLE_STRIP, static_cast<GLsizei>(mediumGimbalVertexIndicesTriStrip[2].size()),
+                               GL_UNSIGNED_INT,nullptr);
                 glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mediumGimbalEBOs[3]);
-                glDrawElements(GL_TRIANGLE_STRIP, static_cast<GLint>(mediumGimbalVertexIndicesTriStrip[3].size()),
-                               GL_UNSIGNED_INT,
-                               mediumGimbalVertexIndicesTriStrip[3].data());
+                glDrawElements(GL_TRIANGLE_STRIP, static_cast<GLsizei>(mediumGimbalVertexIndicesTriStrip[3].size()),
+                               GL_UNSIGNED_INT,nullptr);
                 glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mediumGimbalEBOs[4]);
-                glDrawElements(GL_TRIANGLE_STRIP, static_cast<GLint>(mediumGimbalVertexIndicesTri[0].size()),
-                               GL_UNSIGNED_INT,
-                               mediumGimbalVertexIndicesTri[0].data());
+                glDrawElements(GL_TRIANGLE_STRIP, static_cast<GLsizei>(mediumGimbalVertexIndicesTri[0].size()),
+                               GL_UNSIGNED_INT,nullptr);
+                modelMatrixStack.Pop();
                 break;
             case GIMBAL_Z_AXIS:
+                modelMatrixStack.Push();
                 modelMatrixStack.RotateY(90.0f);
                 modelMatrixStack.RotateX(90.0f);
                 glUniformMatrix4fv(data.modelMatrixLocation, 1, GL_FALSE, glm::value_ptr(modelMatrixStack.Top()));
                 glUniformMatrix4fv(data.gimbalColourLocation, 1, GL_FALSE, glm::value_ptr(gimbalColour));
                 glBindVertexArray(largeGimbalVAO);
                 glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, largeGimbalEBOs[0]);
-                glDrawElements(GL_TRIANGLE_STRIP, static_cast<GLint>(largeGimbalVertexIndicesTriStrip[0].size()),
-                               GL_UNSIGNED_INT,
-                               largeGimbalVertexIndicesTriStrip[0].data());
+                glDrawElements(GL_TRIANGLE_STRIP, static_cast<GLsizei>(largeGimbalVertexIndicesTriStrip[0].size()),
+                               GL_UNSIGNED_INT,nullptr);
                 glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, largeGimbalEBOs[1]);
-                glDrawElements(GL_TRIANGLE_STRIP, static_cast<GLint>(largeGimbalVertexIndicesTriStrip[1].size()),
-                               GL_UNSIGNED_INT,
-                               largeGimbalVertexIndicesTriStrip[1].data());
+                glDrawElements(GL_TRIANGLE_STRIP, static_cast<GLsizei>(largeGimbalVertexIndicesTriStrip[1].size()),
+                               GL_UNSIGNED_INT,nullptr);
                 glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, largeGimbalEBOs[2]);
-                glDrawElements(GL_TRIANGLE_STRIP, static_cast<GLint>(largeGimbalVertexIndicesTriStrip[2].size()),
-                               GL_UNSIGNED_INT,
-                               largeGimbalVertexIndicesTriStrip[2].data());
+                glDrawElements(GL_TRIANGLE_STRIP, static_cast<GLsizei>(largeGimbalVertexIndicesTriStrip[2].size()),
+                               GL_UNSIGNED_INT,nullptr);
                 glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, largeGimbalEBOs[3]);
-                glDrawElements(GL_TRIANGLE_STRIP, static_cast<GLint>(largeGimbalVertexIndicesTriStrip[3].size()),
-                               GL_UNSIGNED_INT,
-                               largeGimbalVertexIndicesTriStrip[3].data());
+                glDrawElements(GL_TRIANGLE_STRIP, static_cast<GLsizei>(largeGimbalVertexIndicesTriStrip[3].size()),
+                               GL_UNSIGNED_INT,nullptr);
                 glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, largeGimbalEBOs[4]);
-                glDrawElements(GL_TRIANGLE_STRIP, static_cast<GLint>(largeGimbalVertexIndicesTri[0].size()),
-                               GL_UNSIGNED_INT,
-                               largeGimbalVertexIndicesTri[0].data());
+                glDrawElements(GL_TRIANGLE_STRIP, static_cast<GLsizei>(largeGimbalVertexIndicesTri[0].size()),
+                               GL_UNSIGNED_INT,nullptr);
+                modelMatrixStack.Pop();
                 break;
         }
-
-        glUseProgram(0);
     }
 
     // GLFW key callback function
     static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
         if (action == GLFW_PRESS) {
-            // Check if the Shift key is pressed
-            bool shift_pressed = (mods & GLFW_MOD_SHIFT) != 0;
 
             switch (key) {
                 case GLFW_KEY_W: {
@@ -706,7 +695,7 @@ private:
     const char* fragmentShaderSource{};
 };
 
-bool Renderer::g_boolDrawGimbals = false;
+bool Renderer::g_boolDrawGimbals = true;
 
 // GLFW requires a static or non-member function for the framebuffer size callback
 void glfw_framebuffer_size_callback(GLFWwindow* window, int width, int height) {

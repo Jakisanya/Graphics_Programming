@@ -77,10 +77,12 @@ std::vector<std::vector<unsigned int>>> parseMeshXMLIndexData(const char* xmlFil
     std::vector<std::vector<unsigned int>> triFanIndices;
 
     rapidxml::xml_node<>* indicesSibling = colourAttributeNode->next_sibling("indices");
+
     while (indicesSibling != nullptr) {
         std::istringstream iss(indicesSibling->value());
         std::string indicesLine;
         unsigned int indexValue;
+
         if (std::strcmp(indicesSibling->first_attribute()->value(), "tri-strip") == 0) {
             std::vector<unsigned int> triStrip;
             while (iss >> indexValue) {
