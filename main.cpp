@@ -9,6 +9,7 @@
 #include <iostream>
 #include <vector>
 #include <random>
+#include <chrono>
 
 const int WINDOW_WIDTH = 800;
 const int WINDOW_HEIGHT = 600;
@@ -32,10 +33,95 @@ bool kKeyPressed = false;
 bool lKeyPressed = false;
 bool jKeyPressed = false;
 
+class Timer {
+public:
+    enum TimerType {
+        SINGLE, // Timer runs once
+        REPEATING // Timer repeats
+    };
+
+    Timer(TimerType type, std::chrono::seconds duration) : m_type(type), m_duration(duration) {}
+
+    // Start the timer
+    void Start() {
+        m_running = true;
+        m_startTime = std::chrono::steady_clock::now();
+    }
+
+    // Check if the timer has elapsed
+    bool isElapsed() {
+        if (!m_running)
+            return false;
+
+        auto currentTime = std::chrono::steady_clock::now();
+
+        if (currentTime < m_endTime) {
+            if (m_type == SINGLE)
+                m_running = false; // Stop if single timer
+            else
+                m_startTime = std::chrono::steady_clock::now(); // Restart if repeating timer
+
+            return true; // Timer elapsed
+        }
+
+        return false; // Timer not elapsed
+    }
+
+    // Interpolation function to calculate alpha value
+    float getAlpha() {
+        // Ensure startTime < endTime to avoid division by zero or negative results
+        if (isElapsed()) {
+            return 1.0f; // Return full alpha if startTime equals or exceeds endTime
+        }
+
+        std::chrono::steady_clock::time_point currentTime = std::chrono::steady_clock::now();
+        std::chrono::steady_clock::time_point endTime = m_startTime + m_duration;
+        // Calculate the normalized time position between startTime and endTime
+        float normalizedTime = static_cast<float>((currentTime - m_startTime) / (endTime - m_startTime));
+
+        // Clamp normalizedTime to the range [0, 1]
+        normalizedTime = std::fminf(std::fmaxf(normalizedTime, 0.0f), 1.0f);
+
+        // Return the alpha value based on the interpolation function
+        return normalizedTime;
+    }
+
+    // Stop the timer
+    void Stop() {
+        m_running = false;
+    }
+
+private:
+    TimerType m_type;
+    std::chrono::seconds m_duration; // Duration of the timer in seconds
+    std::chrono::steady_clock::time_point m_startTime;
+    std::chrono::steady_clock::time_point m_endTime;
+    bool m_running = false;
+};
+
+static glm::fquat Orients[] = {
+                glm::fquat(0.7071f, 0.7071f, 0.0f, 0.0f),
+                glm::fquat(0.5f, 0.5f, -0.5f, 0.5f),
+                glm::fquat(-0.4895f, -0.7892f, -0.3700f, -0.02514f),
+                glm::fquat(0.4895f, 0.7892f, 0.3700f, 0.02514f),
+
+                glm::fquat(0.3840f, -0.1591f, -0.7991f, -0.4344f),
+                glm::fquat(0.5537f, 0.5208f, 0.6483f, 0.0410f),
+                glm::fquat(0.0f, 0.0f, 1.0f, 0.0f)
+};
+
+static char OrientKeys[] = {
+                'q',
+                'w',
+                'e',
+                'r',
+                't',
+                'y',
+                'u'
+};
+
 GLuint g_GlobalMatricesUBO;
 static const int g_iGlobalMatricesBindingIndex = 0;
-
-#define SMALL_ANGLE_INCREMENT 15.0f
 
 GLFWwindow* initializeGLFW() {
     if (!glfwInit()) {
@@ -150,8 +236,6 @@ public:
     std::vector<std::vector<GLuint>> shipVertexIndicesTri;
     glm::mat4 modelMatrix{};
 
-    static bool bRightMultiply;
-    static bool boolDrawLookatPoint;
     static glm::fquat orientation;
     static glm::vec3 cameraTarget;
     static glm::vec3 upVector;
@@ -399,48 +483,47 @@ public:
         return rotMat * transMat;
     }
 
-    enum OffsetRelative {
-        MODEL_RELATIVE,
-        WORLD_RELATIVE,
-        CAMERA_RELATIVE,
-        NUM_RELATIVES
-    };
+    static glm::fquat Orients[];
 
-    static int iOffset;
+    static char g_OrientKeys[];
 
-    static void OffsetOrientation(const glm::vec3 &_axis, float fAngDeg) {
-        float fAngRad = glm::radians(fAngDeg);
+    static glm::vec4 Vectorize(const glm::fquat theQuat) {
+        glm::vec4 ret;
 
-        glm::vec3 axis = glm::normalize(_axis);
+        ret.x = theQuat.x;
+        ret.y = theQuat.y;
+        ret.z = theQuat.z;
+        ret.w = theQuat.w;
 
-        axis = axis * sinf(fAngRad / 2.0f);
-        float scalar = cosf(fAngRad / 2.0f);
+        return ret;
+    }
 
-        glm::fquat offset(scalar, axis.x, axis.y, axis.z);
+    glm::fquat Lerp(const glm::fquat &v0, const glm::fquat &v1, float alpha) {
+        glm::vec4 start = Vectorize(v0);
+        glm::vec4 end = Vectorize(v1);
+        glm::vec4 interp = glm::mix(start, end, alpha);
 
-        switch(iOffset)
-        {
-            case MODEL_RELATIVE:
-                orientation = orientation * offset;
-                break;
-            case WORLD_RELATIVE:
-                orientation = offset * orientation;
-                break;
-            case CAMERA_RELATIVE:
-            {
-                const glm::vec3 &camPos = ResolveCamPosition();
-                const glm::mat4 &camMat = CalcLookAtMatrix(camPos, cameraTarget, glm::vec3(0.0f, 1.0f, 0.0f));
+        printf("alpha: %f, (%f, %f, %f, %f)\n", alpha, interp.w, interp.x, interp.y, interp.z);
 
-                glm::fquat viewQuat = glm::quat_cast(camMat);
-                glm::fquat invViewQuat = glm::conjugate(viewQuat);
+        interp = glm::normalize(interp);
+        return {interp.w, interp.x, interp.y, interp.z};
+    }
 
-                const glm::fquat &worldQuat = (invViewQuat * offset * viewQuat);
-                orientation = worldQuat * orientation;
-            }
-                break;
-        }
+    glm::fquat Slerp(const glm::fquat &v0, const glm::fquat &v1, float alpha) {
+        float dot = glm::dot(v0, v1);
 
-        orientation = glm::normalize(orientation);
+        const float DOT_THRESHOLD = 0.9995f;
+        if (dot > DOT_THRESHOLD)
+            return Lerp(v0, v1, alpha);
+
+        glm::clamp(dot, -1.0f, 1.0f);
+        float theta_0 = acosf(dot);
+        float theta = theta_0*alpha;
+
+        glm::fquat v2 = v1 + -(v0 * dot);
+        v2 = glm::normalize(v2);
+
+        return (v0 * glm::cos(theta)) + (v2 * glm::sin(theta));
     }
 
     void perform_render_sequence(GLFWwindow* window) {
@@ -508,74 +591,15 @@ public:
             // Check if the Shift key is pressed
             bool shift_pressed = (mods & GLFW_MOD_SHIFT) != 0;
 
-            switch (key) {
-                case GLFW_KEY_W: {
-                    wKeyPressed = true;
-                    OffsetOrientation(glm::vec3(1.0f, 0.0f, 0.0f), SMALL_ANGLE_INCREMENT);
-                    break;
-                }
-                case GLFW_KEY_S: {
-                    sKeyPressed = true;
-                    OffsetOrientation(glm::vec3(1.0f, 0.0f, 0.0f), -SMALL_ANGLE_INCREMENT);
-                    break;
-                }
-                case GLFW_KEY_A: {
-                    aKeyPressed = true;
-                    OffsetOrientation(glm::vec3(0.0f, 0.0f, 1.0f), SMALL_ANGLE_INCREMENT);
-                    break;
-                }
-                case GLFW_KEY_D: {
-                    dKeyPressed = true;
-                    OffsetOrientation(glm::vec3(0.0f, 0.0f, 1.0f), -SMALL_ANGLE_INCREMENT);
-                    break;
-                }
-                case GLFW_KEY_Q: {
-                    qKeyPressed = true;
-                    OffsetOrientation(glm::vec3(0.0f, 1.0f, 0.0f), SMALL_ANGLE_INCREMENT);
-                    break;
-                }
-                case GLFW_KEY_E: {
-                    eKeyPressed = true;
-                    OffsetOrientation(glm::vec3(0.0f, 1.0f, 0.0f), -SMALL_ANGLE_INCREMENT);
-                    break;
-                }
-                case GLFW_KEY_I: {
-                    iKeyPressed = true;
-                    if (shift_pressed) sphereCameraRelativePosition.y -= 1.125f;
-                    else sphereCameraRelativePosition.y -= 11.25f;
-                    break;
-                }
-                case GLFW_KEY_K: {
-                    kKeyPressed = true;
-                    if (shift_pressed) sphereCameraRelativePosition.y += 1.125f;
-                    else sphereCameraRelativePosition.y += 11.25f;
-                    break;
-                }
-                case GLFW_KEY_J: {
-                    jKeyPressed = true;
-                    if (shift_pressed) sphereCameraRelativePosition.x -= 1.125f;
-                    else sphereCameraRelativePosition.x -= 11.25f;
-                    break;
-                }
-                case GLFW_KEY_L: {
-                    lKeyPressed = true;
-                    if (shift_pressed) sphereCameraRelativePosition.x += 1.125f;
-                    else sphereCameraRelativePosition.x += 11.25f;
-                    break;
-                }
-                case GLFW_KEY_SPACE: {
-                    iOffset += 1;
-                    iOffset = iOffset % NUM_RELATIVES;
-                    switch (iOffset) {
-                        case MODEL_RELATIVE: printf("Model Relative\n"); break;
-                        case WORLD_RELATIVE: printf("World Relative\n"); break;
-                        case CAMERA_RELATIVE: printf("Camera Relative\n"); break;
-                        default: break;
-                    }
-                    break;
-                }
-                default:
-                    break;
+            if (key == GLFW_KEY_SPACE) {
+                bool bSlerp = orient.ToggleSlerp();
+                printf(bSlerp ? "Slerp\n" : "Lerp\n");
+            }
+
+            for(int iOrient = 0; iOrient < ARRAY_COUNT(g_OrientKeys); iOrient++)
+            {
+                if(key == g_OrientKeys[iOrient])
+                    ApplyOrientation(iOrient);
             }
 
             if (action == GLFW_RELEASE) {
@@ -593,19 +617,130 @@ public:
         }
     }
 
+
 private:
     std::vector<GLuint> shaders;
     const char* vertexShaderSource{};
     const char* fragmentShaderSource{};
 };
 
-bool Renderer::bRightMultiply = true;
-bool Renderer::boolDrawLookatPoint = false;
 glm::fquat Renderer::orientation(1.0f, 0.0f, 0.0f, 0.0f);
 glm::vec3 Renderer::cameraTarget{0.0f, 10.0f, 0.0f};
 glm::vec3 Renderer::upVector{0.0f, 1.0f, 0.0f};
 glm::vec3 Renderer::sphereCameraRelativePosition{90.0f, 0.0f, 66.0f};
-int Renderer::iOffset = MODEL_RELATIVE;
+char Renderer::g_OrientKeys[] = {
+    'q',
+    'w',
+    'e',
+    'r',
+
+    't',
+    'y',
+    'u',
+};
+
+glm::fquat Renderer::Orients[] = {
+glm::fquat(0.7071f, 0.7071f, 0.0f, 0.0f),
+glm::fquat(0.5f, 0.5f, -0.5f, 0.5f),
+glm::fquat(-0.4895f, -0.7892f, -0.3700f, -0.02514f),
+glm::fquat(0.4895f, 0.7892f, 0.3700f, 0.02514f),
+
+glm::fquat(0.3840f, -0.1591f, -0.7991f, -0.4344f),
+glm::fquat(0.5537f, 0.5208f, 0.6483f, 0.0410f),
+glm::fquat(0.0f, 0.0f, 1.0f, 0.0f),
+};
+
+void ApplyOrientation(int iIndex)
+{
+    if(!orient.IsAnimating())
+        orient.AnimateToOrient(iIndex);
+}
+
+class Orientation {
+public:
+    Orientation()
+            : m_bIsAnimating(false)
+            , m_ixCurrOrient(0)
+            , m_bSlerp(false)
+    {}
+
+    bool ToggleSlerp() {
+        m_bSlerp = !m_bSlerp;
+        return m_bSlerp;
+    }
+
+    [[nodiscard]] glm::fquat GetOrient() const {
+        if(m_bIsAnimating)
+            return m_anim.GetOrient(Orients[m_ixCurrOrient], m_bSlerp);
+        else
+            return Orients[m_ixCurrOrient];
+    }
+
+    [[nodiscard]] bool IsAnimating() const {return m_bIsAnimating;}
+
+    void UpdateTime() {
+        if(m_bIsAnimating)
+        {
+            bool bIsFinished = m_anim.UpdateTime();
+            if(bIsFinished)
+            {
+                m_bIsAnimating = false;
+                m_ixCurrOrient = m_anim.GetFinalIx();
+            }
+        }
+    }
+
+    void AnimateToOrient(int ixDestination) {
+        if(m_ixCurrOrient == ixDestination)
+            return;
+        std::chrono::seconds duration(1);
+        m_anim.StartAnimation(ixDestination, duration);
+        m_bIsAnimating = true;
+    }
+
+private:
+    class Animation {
+    public:
+        Animation(Timer timer) : m_currTimer(timer) {};
+
+        //Returns true if the animation is over.
+        bool UpdateTime() {
+            return m_currTimer.isElapsed();
+        }
+
+        [[nodiscard]] glm::fquat GetOrient(const glm::fquat &initial, bool bSlerp) const {
+            if (bSlerp) {
+                return Slerp(initial, Orients[m_ixFinalOrient], m_currTimer.getAlpha());
+            }
+            else {
+                return Lerp(initial, Orients[m_ixFinalOrient], m_currTimer.getAlpha());
+            }
+
+            return initial;
+        }
+
+        void StartAnimation(int ixDestination, std::chrono::seconds fDuration)
+        {
+            m_ixFinalOrient = ixDestination;
+
+            // Create a single timer with 5 seconds duration
+            Timer singleTimer(Timer::SINGLE, fDuration);
+            m_currTimer = singleTimer;
+            m_currTimer.Start();
+        }
+
+        [[nodiscard]] int GetFinalIx() const {return m_ixFinalOrient;}
+
+    private:
+        int m_ixFinalOrient{};
+        Timer m_currTimer;
+    };
+
+    bool m_bIsAnimating;
+    int m_ixCurrOrient;
+    bool m_bSlerp;
+    Animation m_anim;
+};
 
 // GLFW requires a static or non-member function for the framebuffer size callback
 void glfw_framebuffer_size_callback(GLFWwindow* window, int width, int height) {
@@ -646,6 +781,9 @@ int main() {
     glUseProgram(renderer.data.shaderProgram);
     glUniform1i(windowWidthLocation, WINDOW_WIDTH);
     glUniform1i(windowHeightLocation, WINDOW_HEIGHT);
+
+    // Create Orientation instance
+    Orientation orient;
 
     // Create plane and gimbals
     std::cout << "Creating unit plane..." << "\n";
