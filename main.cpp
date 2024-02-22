@@ -120,6 +120,126 @@ static char OrientKeys[] = {
                 'u'
 };
 
+static glm::vec4 Vectorize(const glm::fquat theQuat) {
+    glm::vec4 ret;
+
+    ret.x = theQuat.x;
+    ret.y = theQuat.y;
+    ret.z = theQuat.z;
+    ret.w = theQuat.w;
+
+    return ret;
+}
+
+static glm::fquat Lerp(const glm::fquat &v0, const glm::fquat &v1, float alpha) {
+    glm::vec4 start = Vectorize(v0);
+    glm::vec4 end = Vectorize(v1);
+    glm::vec4 interp = glm::mix(start, end, alpha);
+
+    printf("alpha: %f, (%f, %f, %f, %f)\n", alpha, interp.w, interp.x, interp.y, interp.z);
+
+    interp = glm::normalize(interp);
+    return {interp.w, interp.x, interp.y, interp.z};
+}
+
+static glm::fquat Slerp(const glm::fquat &v0, const glm::fquat &v1, float alpha) {
+    float dot = glm::dot(v0, v1);
+
+    const float DOT_THRESHOLD = 0.9995f;
+    if (dot > DOT_THRESHOLD)
+        return Lerp(v0, v1, alpha);
+
+    glm::clamp(dot, -1.0f, 1.0f);
+    float theta_0 = acosf(dot);
+    float theta = theta_0*alpha;
+
+    glm::fquat v2 = v1 + -(v0 * dot);
+    v2 = glm::normalize(v2);
+
+    return (v0 * glm::cos(theta)) + (v2 * glm::sin(theta));
+}
+
+class Orientation {
+public:
+    class Animation {
+    public:
+        explicit Animation(Timer timer) : m_currTimer(timer) {};
+
+        //Returns true if the animation is over.
+        bool UpdateTime() {
+            return m_currTimer.isElapsed();
+        }
+
+        [[nodiscard]] glm::fquat GetOrient(const glm::fquat &initial, bool bSlerp) {
+            if (bSlerp) {
+                return Slerp(initial, Orients[m_ixFinalOrient], m_currTimer.getAlpha());
+            }
+            else {
+                return Lerp(initial, Orients[m_ixFinalOrient], m_currTimer.getAlpha());
+            }
+        }
+
+        void StartAnimation(int ixDestination)
+        {
+            m_ixFinalOrient = ixDestination;
+            m_currTimer.Start();
+        }
+
+        [[nodiscard]] int GetFinalIx() const {return m_ixFinalOrient;}
+
+    private:
+        int m_ixFinalOrient{};
+        Timer m_currTimer;
+    };
+
+    bool m_bIsAnimating;
+    bool m_bSlerp;
+
+    Orientation(Orientation::Animation mAnim)
+            : m_bIsAnimating(false)
+            , m_ixCurrOrient(0)
+            , m_bSlerp(false),
+            m_anim(mAnim) {}
+
+    bool ToggleSlerp() {
+        std::cout << "ToggleSlerp." << "\n";
+        m_bSlerp = !m_bSlerp;
+        return m_bSlerp;
+    }
+
+    [[nodiscard]] glm::fquat GetOrient() {
+        if(m_bIsAnimating)
+            return m_anim.GetOrient(Orients[m_ixCurrOrient], m_bSlerp);
+        else
+            return Orients[m_ixCurrOrient];
+    }
+
+    [[nodiscard]] bool IsAnimating() const {return m_bIsAnimating;}
+
+    void UpdateTime() {
+        if(m_bIsAnimating)
+        {
+            bool bIsFinished = m_anim.UpdateTime();
+            if(bIsFinished)
+            {
+                m_bIsAnimating = false;
+                m_ixCurrOrient = m_anim.GetFinalIx();
+            }
+        }
+    }
+
+    void AnimateToOrient(int ixDestination) {
+        if(m_ixCurrOrient == ixDestination)
+            return;
+        m_anim.StartAnimation(ixDestination);
+        m_bIsAnimating = true;
+    }
+
+private:
+    int m_ixCurrOrient;
+    Animation m_anim;
+};
+
 GLuint g_GlobalMatricesUBO;
 static const int g_iGlobalMatricesBindingIndex = 0;
 
@@ -293,11 +413,9 @@ public:
 
         glGenVertexArrays(1, &shipVAO);
         glGenBuffers(1, &shipVBO);
-        // glGenBuffers(1, &shipEBO);
 
         glBindVertexArray(shipVAO);
         glBindBuffer(GL_ARRAY_BUFFER, shipVBO);
-        // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, shipEBO);
 
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)nullptr);
         glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
@@ -483,50 +601,9 @@ public:
         return rotMat * transMat;
     }
 
-    static glm::fquat Orients[];
+    void perform_render_sequence(GLFWwindow* window, Orientation orient) {
+        orient.UpdateTime();
 
-    static char g_OrientKeys[];
-
-    static glm::vec4 Vectorize(const glm::fquat theQuat) {
-        glm::vec4 ret;
-
-        ret.x = theQuat.x;
-        ret.y = theQuat.y;
-        ret.z = theQuat.z;
-        ret.w = theQuat.w;
-
-        return ret;
-    }
-
-    glm::fquat Lerp(const glm::fquat &v0, const glm::fquat &v1, float alpha) {
-        glm::vec4 start = Vectorize(v0);
-        glm::vec4 end = Vectorize(v1);
-        glm::vec4 interp = glm::mix(start, end, alpha);
-
-        printf("alpha: %f, (%f, %f, %f, %f)\n", alpha, interp.w, interp.x, interp.y, interp.z);
-
-        interp = glm::normalize(interp);
-        return {interp.w, interp.x, interp.y, interp.z};
-    }
-
-    glm::fquat Slerp(const glm::fquat &v0, const glm::fquat &v1, float alpha) {
-        float dot = glm::dot(v0, v1);
-
-        const float DOT_THRESHOLD = 0.9995f;
-        if (dot > DOT_THRESHOLD)
-            return Lerp(v0, v1, alpha);
-
-        glm::clamp(dot, -1.0f, 1.0f);
-        float theta_0 = acosf(dot);
-        float theta = theta_0*alpha;
-
-        glm::fquat v2 = v1 + -(v0 * dot);
-        v2 = glm::normalize(v2);
-
-        return (v0 * glm::cos(theta)) + (v2 * glm::sin(theta));
-    }
-
-    void perform_render_sequence(GLFWwindow* window) {
         // Clear the color and depth buffers
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -551,70 +628,21 @@ public:
         glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(projectionMatrix));
         glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
-        // Draw terrain
-        drawTerrain(modelMatrixStack);
-
         // Draw ship
-        drawShip(modelMatrixStack);
+        drawShip(modelMatrixStack, orient);
 
         glUseProgram(0);
     }
 
-    void drawTerrain(MatrixStack modelMatrixStack) const {
+    void drawShip(MatrixStack modelMatrixStack, Orientation orient) const {
         modelMatrixStack.Push();
-
-        glm::vec3 sceneScale = {100.0f, 1.0f, 100.0f};
-        modelMatrixStack.Scale(sceneScale);
-        glUniformMatrix4fv(data.modelMatrixLocation, 1, GL_FALSE, glm::value_ptr(modelMatrixStack.Top()));
-
-        glBindVertexArray(unitPlaneVAO);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, unitPlaneEBO);
-        glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(unitPlaneVertexIndicesTri.size()),
-                       GL_UNSIGNED_INT, nullptr);
-        modelMatrixStack.Pop();
-    }
-
-    void drawShip(MatrixStack modelMatrixStack) const {
-        modelMatrixStack.Push();
-        modelMatrixStack.Translate(cameraTarget);
-        modelMatrixStack.ApplyMatrix(glm::mat4_cast(orientation));
+        modelMatrixStack.ApplyMatrix(glm::mat4_cast(orient.GetOrient()));
+        modelMatrixStack.Scale(glm::vec3(3.0, 3.0, 3.0));
         modelMatrixStack.RotateX(-90);
 
         glUniformMatrix4fv(data.modelMatrixLocation, 1, GL_FALSE, glm::value_ptr(modelMatrixStack.Top()));
         glBindVertexArray(shipVAO);
         glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(shipVertexData.size()));
-    }
-
-    // GLFW key callback function
-    static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-        if (action == GLFW_PRESS) {
-            // Check if the Shift key is pressed
-            bool shift_pressed = (mods & GLFW_MOD_SHIFT) != 0;
-
-            if (key == GLFW_KEY_SPACE) {
-                bool bSlerp = orient.ToggleSlerp();
-                printf(bSlerp ? "Slerp\n" : "Lerp\n");
-            }
-
-            for(int iOrient = 0; iOrient < ARRAY_COUNT(g_OrientKeys); iOrient++)
-            {
-                if(key == g_OrientKeys[iOrient])
-                    ApplyOrientation(iOrient);
-            }
-
-            if (action == GLFW_RELEASE) {
-                wKeyPressed = false;
-                sKeyPressed = false;
-                dKeyPressed = false;
-                aKeyPressed = false;
-                eKeyPressed = false;
-                qKeyPressed = false;
-                iKeyPressed = false;
-                kKeyPressed = false;
-                lKeyPressed = false;
-                jKeyPressed = false;
-            }
-        }
     }
 
 
@@ -625,122 +653,37 @@ private:
 };
 
 glm::fquat Renderer::orientation(1.0f, 0.0f, 0.0f, 0.0f);
-glm::vec3 Renderer::cameraTarget{0.0f, 10.0f, 0.0f};
+glm::vec3 Renderer::cameraTarget{0.0f, 0.0f, 0.0f};
 glm::vec3 Renderer::upVector{0.0f, 1.0f, 0.0f};
 glm::vec3 Renderer::sphereCameraRelativePosition{90.0f, 0.0f, 66.0f};
-char Renderer::g_OrientKeys[] = {
-    'q',
-    'w',
-    'e',
-    'r',
 
-    't',
-    'y',
-    'u',
-};
-
-glm::fquat Renderer::Orients[] = {
-glm::fquat(0.7071f, 0.7071f, 0.0f, 0.0f),
-glm::fquat(0.5f, 0.5f, -0.5f, 0.5f),
-glm::fquat(-0.4895f, -0.7892f, -0.3700f, -0.02514f),
-glm::fquat(0.4895f, 0.7892f, 0.3700f, 0.02514f),
-
-glm::fquat(0.3840f, -0.1591f, -0.7991f, -0.4344f),
-glm::fquat(0.5537f, 0.5208f, 0.6483f, 0.0410f),
-glm::fquat(0.0f, 0.0f, 1.0f, 0.0f),
-};
-
-void ApplyOrientation(int iIndex)
-{
-    if(!orient.IsAnimating())
+void ApplyOrientation(int iIndex, Orientation orient) {
+    if(!orient.IsAnimating()) {
         orient.AnimateToOrient(iIndex);
+    }
 }
 
-class Orientation {
-public:
-    Orientation()
-            : m_bIsAnimating(false)
-            , m_ixCurrOrient(0)
-            , m_bSlerp(false)
-    {}
+bool bSlerp = false;
+// GLFW key callback function
+static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods, Orientation orient) {
+    if (action == GLFW_PRESS) {
+        if (key == GLFW_KEY_SPACE) {
+            std::cout << "space." << "\n";
+            std::cout << "orient.m_bSlerp: " << static_cast<int>(orient.m_bSlerp) << "\n";
+            orient.ToggleSlerp();
+            std::cout << "strlen(OrientKeys): " << strlen(OrientKeys) << "\n";
+            printf(bSlerp ? "Slerp\n" : "Lerp\n");
+        }
 
-    bool ToggleSlerp() {
-        m_bSlerp = !m_bSlerp;
-        return m_bSlerp;
-    }
 
-    [[nodiscard]] glm::fquat GetOrient() const {
-        if(m_bIsAnimating)
-            return m_anim.GetOrient(Orients[m_ixCurrOrient], m_bSlerp);
-        else
-            return Orients[m_ixCurrOrient];
-    }
-
-    [[nodiscard]] bool IsAnimating() const {return m_bIsAnimating;}
-
-    void UpdateTime() {
-        if(m_bIsAnimating)
+        for (int iOrient = 0; iOrient < strlen(OrientKeys); iOrient++)
         {
-            bool bIsFinished = m_anim.UpdateTime();
-            if(bIsFinished)
-            {
-                m_bIsAnimating = false;
-                m_ixCurrOrient = m_anim.GetFinalIx();
-            }
+            std::cout << "iOrient: " << iOrient << "\n";
+            if (key == OrientKeys[iOrient])
+                ApplyOrientation(iOrient, orient);
         }
     }
-
-    void AnimateToOrient(int ixDestination) {
-        if(m_ixCurrOrient == ixDestination)
-            return;
-        std::chrono::seconds duration(1);
-        m_anim.StartAnimation(ixDestination, duration);
-        m_bIsAnimating = true;
-    }
-
-private:
-    class Animation {
-    public:
-        Animation(Timer timer) : m_currTimer(timer) {};
-
-        //Returns true if the animation is over.
-        bool UpdateTime() {
-            return m_currTimer.isElapsed();
-        }
-
-        [[nodiscard]] glm::fquat GetOrient(const glm::fquat &initial, bool bSlerp) const {
-            if (bSlerp) {
-                return Slerp(initial, Orients[m_ixFinalOrient], m_currTimer.getAlpha());
-            }
-            else {
-                return Lerp(initial, Orients[m_ixFinalOrient], m_currTimer.getAlpha());
-            }
-
-            return initial;
-        }
-
-        void StartAnimation(int ixDestination, std::chrono::seconds fDuration)
-        {
-            m_ixFinalOrient = ixDestination;
-
-            // Create a single timer with 5 seconds duration
-            Timer singleTimer(Timer::SINGLE, fDuration);
-            m_currTimer = singleTimer;
-            m_currTimer.Start();
-        }
-
-        [[nodiscard]] int GetFinalIx() const {return m_ixFinalOrient;}
-
-    private:
-        int m_ixFinalOrient{};
-        Timer m_currTimer;
-    };
-
-    bool m_bIsAnimating;
-    int m_ixCurrOrient;
-    bool m_bSlerp;
-    Animation m_anim;
-};
+}
 
 // GLFW requires a static or non-member function for the framebuffer size callback
 void glfw_framebuffer_size_callback(GLFWwindow* window, int width, int height) {
@@ -782,8 +725,11 @@ int main() {
     glUniform1i(windowWidthLocation, WINDOW_WIDTH);
     glUniform1i(windowHeightLocation, WINDOW_HEIGHT);
 
-    // Create Orientation instance
-    Orientation orient;
+    // Create Timer object
+    Timer timer(Timer::TimerType::SINGLE, std::chrono::seconds (5));
+    // Create Animation and Orientation instance
+    Orientation::Animation mAnim(timer);
+    Orientation orient(mAnim);
 
     // Create plane and gimbals
     std::cout << "Creating unit plane..." << "\n";
@@ -799,7 +745,7 @@ int main() {
     glfwSetWindowUserPointer(window, &renderer);
 
     // Set the key callback
-    glfwSetKeyCallback(window, Renderer::keyCallback);
+    glfwSetKeyCallback(window, reinterpret_cast<GLFWkeyfun>(keyCallback));
 
     // Set the resize callback
     glfwSetFramebufferSizeCallback(window, glfw_framebuffer_size_callback);
@@ -822,11 +768,11 @@ int main() {
 
         // Check if re-render is needed
         if (renderer.resizeFlag) {
-            renderer.perform_render_sequence(window);
+            renderer.perform_render_sequence(window, orient);
             renderer.resizeFlag = false; // Reset the flag
         }
 
-        renderer.perform_render_sequence(window);
+        renderer.perform_render_sequence(window, orient);
 
         // Swap front and back buffers
         glfwSwapBuffers(window);
